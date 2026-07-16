@@ -22,7 +22,7 @@ We're betting that:
   trust model, the memory, the integrations, the judgment about what to show a user
   and when to ask.
 - **Users already pay for a model subscription** and don't want to pay again per app.
-  A ChatGPT or Claude subscription, or a local model, should just work.
+  A ChatGPT or Claude subscription they already pay for should just work.
 
 If that's right, an app that innovates independently of any model vendor wins ground
 that the vendors' own apps cannot contest. If it's wrong — if one model runs away with
@@ -65,7 +65,8 @@ A native macOS application that:
 
 - runs agent orchestration **locally**, on the user's Mac;
 - talks to **whatever model the user chose** — a cloud provider they already subscribe
-  to, an API key they own, or a model running on their own hardware;
+  to, or an API key they own. Cloud only for now: locally-runnable models are not good
+  enough for this work today, and FR-007 keeps that a gap rather than a rewrite;
 - does real work against local files, native Mac applications, and connected services;
 - keeps permissions, task state, approvals, and history on the Mac;
 - makes what it did legible after the fact.
@@ -117,12 +118,12 @@ that depends on them.
 - **Background execution.** Does work survive the window closing in v1? Deciding "yes"
   later costs a painful retrofit; deciding "yes" now costs XPC and a LaunchAgent before
   the product is validated.
-- **The first real task.** Deferred to increment 6, deliberately. It gets picked once we
+- **The first real task.** Deferred to increment 7, deliberately. It gets picked once we
   have a working app that talks to an LLM and a set of tools we've actually tested — so
   the choice is made against what the thing demonstrably does, not against imagination.
   The risk this carries, and what bounds it, is in ROADMAP.md.
-- **The increment-4 starter tool set.** Which tools exist determines which tasks are
+- **The increment-5 starter tool set.** Which tools exist determines which tasks are
   available to pick from, so this quietly constrains the product. See ROADMAP.md.
 - **What "neutral" means mechanically.** Adapter per provider, OpenAI-compatible
   endpoint, or a proxy layer. This is the subject of the increment-2 research spike and
-  ADR-0005.
+  ADR-0006.

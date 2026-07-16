@@ -37,12 +37,35 @@ is a change to what the product is.
 | ID | Requirement | Status |
 |---|---|---|
 | **FR-001** | The system shall perform all model inference through a provider abstraction, such that no feature depends on a specific model vendor. | Specified |
-| **FR-002** | The system shall support at minimum one hosted commercial provider and one locally-hosted open model. | Specified |
+| **FR-002** | The system shall support at minimum two independent hosted providers from different vendors. | Specified |
+| **FR-007** | Where a locally-hosted model is used, the system shall treat it as an ordinary provider. *(No local provider ships in v1 — locally-runnable models are not currently good enough for this work. The abstraction must not assume hosted.)* | Specified |
 | **FR-003** | When the user changes provider or model, the system shall continue to expose every capability that does not require a provider-exclusive feature. | Specified |
 | **FR-004** | Where a capability requires a provider-exclusive feature, the system shall degrade to a neutral implementation rather than disable the capability. | Specified |
 | **FR-005** | The system shall allow the user to supply their own credentials for a provider they already have a relationship with. | Specified |
 | **FR-006** | If a provider becomes unavailable mid-task, then the system shall preserve task state and allow resumption on another provider. | Specified |
 | **NFR-001** | Adding a new provider shall not require changes outside its adapter and its registration. | Specified |
+
+**Note on FR-002 (2026-07-16):** previously required one hosted provider *and* one
+locally-hosted open model. Revised to two hosted vendors — local models are not good
+enough for this work today. The thesis is unaffected: neutrality across cloud vendors
+is the wedge, and no competitor can offer it. FR-007 keeps the seam honest so local
+remains a provider we haven't built, not a rewrite. Revised rather than superseded
+because nothing implements it yet.
+
+## Provider configuration
+
+| ID | Requirement | Status |
+|---|---|---|
+| **FR-050** | The system shall allow the user to configure one or more model providers. | Specified |
+| **FR-051** | The system shall present available providers and models from a registry rather than requiring the user to type identifiers. (ADR-0005) | Specified |
+| **FR-052** | The system shall store provider credentials in the macOS Keychain, and shall not write them to preferences, logs, or application state. | Specified |
+| **FR-053** | When presenting models for selection, the system shall by default offer only models capable of tool calling. | Specified |
+| **FR-054** | If the model registry cannot be fetched, then the system shall fall back to its bundled snapshot and remain fully usable. (ADR-0005) | Specified |
+| **FR-055** | The system shall allow the user to designate which configured provider and model is used. | Specified |
+| **FR-056** | When the user supplies a credential, the system shall verify it against the provider before reporting the provider as usable. | Specified |
+| **FR-057** | The system shall allow the user to remove a configured provider, and shall delete its stored credential when they do. | Specified |
+| **NFR-007** | Registry decoding shall be lenient: unknown fields ignored, and an entry that fails to decode shall be skipped rather than fail the load. (ADR-0005) | Specified |
+| **NFR-008** | The system shall not block launch on a network request. | Specified |
 
 ## Tasks
 

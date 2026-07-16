@@ -23,9 +23,9 @@ we'll know the real cost of each candidate.
 The failure mode this carries is real and worth naming: an engine with nothing to be
 right or wrong about grows forever. The previous draft of this project reached ten
 phases and seven Swift packages without one working feature. What keeps us out of that
-hole is that increments 3–5 each have a concrete, falsifiable exit — a real model call,
+hole is that increments 2, 4, 5, and 6 each have a concrete, falsifiable exit — a real model call,
 a real tool doing a real thing, a second provider working cold. None of those are
-opinions. Increment 6 is a hard stop where we pick tasks or admit the engine isn't
+opinions. Increment 7 is a hard stop where we pick tasks or admit the engine isn't
 done.
 
 ---
@@ -38,7 +38,26 @@ This repo's specs, process, ADR format, and research system. Replaces the prior
 `MACOS_FRONTEND_ROADMAP.md` draft, which was written without product input and is not
 trusted.
 
-## Increment 2 — Runtime and neutrality research → ADR-0005
+## Increment 2 — Settings: add your LLM providers
+
+First code increment. Worktree, PR.
+
+An idiomatic macOS Settings scene where the user configures one or more cloud
+providers: pick a provider and model from the models.dev registry (ADR-0005), paste a
+key, have it verified, choose the active one.
+
+Deliberately ahead of the runtime research. The settings surface doesn't depend on how
+the agent loop works, and building it first means the app is real from increment 2
+rather than increment 4.
+
+FR-050 through FR-057, NFR-007, NFR-008. Keys in Keychain, never in preferences.
+Registry bundled and refreshed, never blocking launch.
+
+**Done when:** a real key is stored, verified against a live provider, and survives
+relaunch; the app works with the network down; and no credential appears in
+preferences or logs.
+
+## Increment 3 — Runtime and neutrality research → ADR-0006
 
 Research spike. Produces docs and one ADR; no product code.
 
@@ -49,32 +68,29 @@ both are single-vendor by construction. The live options:
 - Custom Swift loop over provider-neutral HTTP.
 - An embedded neutral framework (Pydantic AI, LangGraph, Mastra, Vercel AI SDK) as a
   bundled subprocess.
-- A normalization layer (LiteLLM, or targeting the OpenAI-compatible endpoint that
-  Ollama, vLLM, and most providers now expose).
+- A normalization layer (LiteLLM, or targeting the OpenAI-compatible endpoint most
+  providers expose).
 
 Sub-question, same spike: what "neutral" means mechanically — adapter per provider vs
-OpenAI-compatible vs proxy. FR-001 through FR-006 and NFR-001 are the constraints the
+OpenAI-compatible vs proxy. FR-001 through FR-007 and NFR-001 are the constraints the
 answer has to satisfy.
 
-Real POCs against real providers, including one local model. Findings go to
-`docs/research/`; the decision goes to ADR-0005.
+Real POCs against real cloud providers. Findings go to `docs/research/`; the decision
+goes to ADR-0006.
 
-**Done when:** ADR-0005 is written with alternatives and evidence, and a research doc
+**Done when:** ADR-0006 is written with alternatives and evidence, and a research doc
 records what we measured so nobody redoes it.
 
-## Increment 3 — A working app that talks to an LLM
+## Increment 4 — A working app that talks to an LLM
 
-First code increment. Worktree, PR.
-
-The agent loop from ADR-0005, running in the monolith, against one real provider. A
-durable task the user can create and watch. No tools yet, no packages, no XPC, no
-connections.
+The agent loop from ADR-0006, in the monolith, against a provider configured in
+increment 2. A durable task the user can create and watch. No tools yet.
 
 **Done when:** a real model call happens, its result lands in a task that survives an
 app restart (FR-010, FR-011), and the task's status is observable while it runs
 (FR-012).
 
-## Increment 4 — First tools, tested
+## Increment 5 — First tools, tested
 
 Tools the engine can actually call, exercised individually until we trust them. Scope
 of the starter set is an open question below.
@@ -85,9 +101,9 @@ forces FR-020 through FR-025 to become real rather than specified.
 **Done when:** each tool has tests proving it does what it claims, and a tool with a
 consequential effect cannot run without approval.
 
-## Increment 5 — Second provider, cold: the real neutrality test
+## Increment 6 — Second provider, cold: the real neutrality test
 
-Add a provider we did not design against, and make the increment-4 tools work through
+Add a provider we did not design against, and make the increment-5 tools work through
 it unchanged.
 
 **This is positioned after tools deliberately.** Tool calling is where provider
@@ -97,11 +113,11 @@ mode. Testing neutrality over plain-text conversation would prove almost nothing
 would let us believe FR-001 was satisfied months before it was.
 
 **Done when:** the provider is added without changes outside its adapter and its
-registration, and every increment-4 tool works through it — or NFR-001 gets rewritten
+registration, and every increment-5 tool works through it — or NFR-001 gets rewritten
 to say what's actually true. Both outcomes are acceptable. Quietly keeping a false
 NFR-001 is not.
 
-## Increment 6 — Pick the tasks
+## Increment 7 — Pick the tasks
 
 Not a build increment. A product decision, made with the engine and tools in front of
 us, drawn from work Toni actually does — not from a category list.
@@ -115,8 +131,8 @@ written.
 
 | Deferred | Until |
 |---|---|
-| **The real first task** | Increment 6 — once a working app talks to an LLM and has tools we've tested. Picked from actual work Toni does. |
-| **Which tools to build first** | Increment 4's scope. Open — see below. |
+| **The real first task** | Increment 7 — once a working app talks to an LLM and has tools we've tested. Picked from actual work Toni does. |
+| **Which tools to build first** | Increment 5's scope. Open — see below. |
 | **Minimum macOS version** | The first increment that wants an API we'd have to gate. Currently nothing does. |
 | **Background execution** (LaunchAgent, XPC) | The product is validated. Retrofit cost is real and acknowledged; paying it before we know the product is worse. |
 | **SPM package extraction** | We know where the seams are. (ADR-0002) |
@@ -128,11 +144,11 @@ written.
 
 ---
 
-## Open: the increment-4 starter tool set
+## Open: the increment-5 starter tool set
 
-Needs answering before increment 4, not before increment 2 or 3.
+Needs answering before increment 5.
 
-The tools we pick determine which tasks are available to choose from in increment 6, so
+The tools we pick determine which tasks are available to choose from in increment 7, so
 this is a smaller version of the same decision — it constrains the product while
 looking like an engineering choice. Worth deciding deliberately.
 
@@ -145,7 +161,7 @@ The obvious candidates, roughly in order of cost:
   execution, so this needs an isolation story first. Probably not in the starter set.
 - **A connected service** (Gmail, Drive) — the most representative of real work, and by
   far the most expensive: OAuth, token refresh, revocation, API surface. Likely too
-  much for increment 4.
+  much for increment 5.
 - **Native app control** — deferred; ADR-0003 keeps it possible.
 
 Not decided. Local files is the likely floor; the question is whether anything joins it.

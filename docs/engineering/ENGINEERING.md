@@ -37,7 +37,7 @@ docs/                      Specs (increment 1)
 | Tests | swift-testing | ADR-0004 |
 | Structure | Single app target, monolith | ADR-0002 |
 | Distribution | Developer ID, notarized | ADR-0003 |
-| Agent runtime | **Undecided** | ADR-0005, increment 2 |
+| Agent runtime | **Undecided** | ADR-0006, deferred |
 | Min macOS | **Undecided** | Nothing needs it yet |
 
 ## Architecture
