@@ -117,9 +117,12 @@ that depends on them.
 - **Background execution.** Does work survive the window closing in v1? Deciding "yes"
   later costs a painful retrofit; deciding "yes" now costs XPC and a LaunchAgent before
   the product is validated.
-- **The first real task.** Deliberately deferred — we're building the engine first. The
-  risk this creates is named in ROADMAP.md and mitigated with a reference task used only
-  as a validation target.
+- **The first real task.** Deferred to increment 6, deliberately. It gets picked once we
+  have a working app that talks to an LLM and a set of tools we've actually tested — so
+  the choice is made against what the thing demonstrably does, not against imagination.
+  The risk this carries, and what bounds it, is in ROADMAP.md.
+- **The increment-4 starter tool set.** Which tools exist determines which tasks are
+  available to pick from, so this quietly constrains the product. See ROADMAP.md.
 - **What "neutral" means mechanically.** Adapter per provider, OpenAI-compatible
   endpoint, or a proxy layer. This is the subject of the increment-2 research spike and
   ADR-0005.

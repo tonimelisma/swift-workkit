@@ -10,17 +10,23 @@ fixed, so amortize it. There are no dates. There is an order.
 
 ---
 
-## The risk we're carrying
+## Sequencing: engine first, then tasks
 
-We decided to build the engine before choosing a real task. This is a known,
-deliberate bet, and it has a specific failure mode: an engine with no target has
-nothing to be right or wrong about. The previous draft of this project reached ten
-phases and seven Swift packages without a single working feature, which is what this
-looks like when it goes wrong.
+Tasks get picked once we have **a working app that talks to an LLM and a set of tools
+we've actually tested.** Not before.
 
-**Mitigation:** increment 3 points the engine at one throwaway reference task. It is
-not a feature and won't ship as one. It exists so "does the engine work" has an answer
-that isn't a matter of opinion.
+The reasoning: choosing tasks up front means choosing them from imagination. Choosing
+them after the engine and tools exist means choosing from what the thing demonstrably
+does — which is a fundamentally better-informed decision, and cheap, because by then
+we'll know the real cost of each candidate.
+
+The failure mode this carries is real and worth naming: an engine with nothing to be
+right or wrong about grows forever. The previous draft of this project reached ten
+phases and seven Swift packages without one working feature. What keeps us out of that
+hole is that increments 3–5 each have a concrete, falsifiable exit — a real model call,
+a real tool doing a real thing, a second provider working cold. None of those are
+opinions. Increment 6 is a hard stop where we pick tasks or admit the engine isn't
+done.
 
 ---
 
@@ -56,29 +62,52 @@ Real POCs against real providers, including one local model. Findings go to
 **Done when:** ADR-0005 is written with alternatives and evidence, and a research doc
 records what we measured so nobody redoes it.
 
-## Increment 3 — Thin vertical slice
+## Increment 3 — A working app that talks to an LLM
 
 First code increment. Worktree, PR.
 
-One task, end to end, in the monolith: real model call through the ADR-0005 runtime,
-real local file read, real artifact out, real approval before a consequential action.
-No packages, no XPC, no connections.
+The agent loop from ADR-0005, running in the monolith, against one real provider. A
+durable task the user can create and watch. No tools yet, no packages, no XPC, no
+connections.
 
-The reference task is a validation vehicle, not a product decision. Something like
-*"read the documents in this folder and write me a summary file"* — mundane on purpose,
-so any failure is the engine's fault and not the task's.
+**Done when:** a real model call happens, its result lands in a task that survives an
+app restart (FR-010, FR-011), and the task's status is observable while it runs
+(FR-012).
 
-**Done when:** the slice runs against at least two providers, one of them local
-(FR-002, FR-003), and the requirements it implements are traced and tested.
+## Increment 4 — First tools, tested
 
-## Increment 4 — Second provider, cold
+Tools the engine can actually call, exercised individually until we trust them. Scope
+of the starter set is an open question below.
 
-Prove FR-001 and NFR-001 are real by adding a provider we didn't design against. If it
-touches anything outside its adapter and registration, NFR-001 is false and we find out
-now rather than after ten features have leaked provider assumptions.
+This increment is where approval lands too — the first tool with a consequential effect
+forces FR-020 through FR-025 to become real rather than specified.
 
-**Done when:** a provider is added without changes outside its adapter — or NFR-001 is
-rewritten to say what's actually true.
+**Done when:** each tool has tests proving it does what it claims, and a tool with a
+consequential effect cannot run without approval.
+
+## Increment 5 — Second provider, cold: the real neutrality test
+
+Add a provider we did not design against, and make the increment-4 tools work through
+it unchanged.
+
+**This is positioned after tools deliberately.** Tool calling is where provider
+neutrality actually bites — Anthropic emits `tool_use` blocks, OpenAI emits
+`tool_calls`, Ollama varies by model, and some open models approximate it with JSON
+mode. Testing neutrality over plain-text conversation would prove almost nothing and
+would let us believe FR-001 was satisfied months before it was.
+
+**Done when:** the provider is added without changes outside its adapter and its
+registration, and every increment-4 tool works through it — or NFR-001 gets rewritten
+to say what's actually true. Both outcomes are acceptable. Quietly keeping a false
+NFR-001 is not.
+
+## Increment 6 — Pick the tasks
+
+Not a build increment. A product decision, made with the engine and tools in front of
+us, drawn from work Toni actually does — not from a category list.
+
+**Done when:** the real first task is named in PRODUCT.md and its requirements are
+written.
 
 ---
 
@@ -86,7 +115,8 @@ rewritten to say what's actually true.
 
 | Deferred | Until |
 |---|---|
-| **The real first task** | The engine exists. Then we pick one from actual work Toni does, not from a category list. |
+| **The real first task** | Increment 6 — once a working app talks to an LLM and has tools we've tested. Picked from actual work Toni does. |
+| **Which tools to build first** | Increment 4's scope. Open — see below. |
 | **Minimum macOS version** | The first increment that wants an API we'd have to gate. Currently nothing does. |
 | **Background execution** (LaunchAgent, XPC) | The product is validated. Retrofit cost is real and acknowledged; paying it before we know the product is worse. |
 | **SPM package extraction** | We know where the seams are. (ADR-0002) |
@@ -95,3 +125,27 @@ rewritten to say what's actually true.
 | **Sandboxed code execution** | Something needs to run generated code. NFR-004 holds the line meanwhile. |
 | **Automations, scheduling** | Post-engine. |
 | **Onboarding, multi-user, enterprise policy** | Distribution reaches people who aren't Toni. |
+
+---
+
+## Open: the increment-4 starter tool set
+
+Needs answering before increment 4, not before increment 2 or 3.
+
+The tools we pick determine which tasks are available to choose from in increment 6, so
+this is a smaller version of the same decision — it constrains the product while
+looking like an engineering choice. Worth deciding deliberately.
+
+The obvious candidates, roughly in order of cost:
+
+- **Local files** — read, search, write within user-approved folders. Cheapest, no
+  OAuth, no network, and exercises approval (writing) and sources (reading). Almost
+  certainly in the set.
+- **Shell / subprocess** — powerful and general, but NFR-004 forbids arbitrary host
+  execution, so this needs an isolation story first. Probably not in the starter set.
+- **A connected service** (Gmail, Drive) — the most representative of real work, and by
+  far the most expensive: OAuth, token refresh, revocation, API surface. Likely too
+  much for increment 4.
+- **Native app control** — deferred; ADR-0003 keeps it possible.
+
+Not decided. Local files is the likely floor; the question is whether anything joins it.
