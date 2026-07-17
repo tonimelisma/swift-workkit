@@ -38,3 +38,4 @@ evidence has to be redone the moment anyone doubts it — which defeats the poin
 |---|---|---|
 | [spec-driven-development.md](spec-driven-development.md) | SDD practice, EARS, ADR formats — the basis for this repo's doc system | 2026-07-16 |
 | [llm-provider-registries.md](llm-provider-registries.md) | models.dev and alternatives; live API measurements and gaps | 2026-07-16 |
+| [provider-subscription-auth.md](provider-subscription-auth.md) | Whether a third-party app may use someone's ChatGPT/Claude subscription (no) | 2026-07-16 |

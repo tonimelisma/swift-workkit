@@ -40,22 +40,35 @@ trusted.
 
 ## Increment 2 — Settings: add your LLM providers
 
-First code increment. Worktree, PR.
+First code increment. Worktree, PR. **Not started — awaiting DOR go-ahead.**
 
-An idiomatic macOS Settings scene where the user configures one or more cloud
-providers: pick a provider and model from the models.dev registry (ADR-0005), paste a
-key, have it verified, choose the active one.
+An idiomatic macOS Settings scene: a simple list of configured providers. Add one, paste
+an API key, have it verified, pick which is active. Nothing else.
 
-Deliberately ahead of the runtime research. The settings surface doesn't depend on how
-the agent loop works, and building it first means the app is real from increment 2
-rather than increment 4.
+FR-050, FR-051, FR-052, FR-054, FR-055, FR-056, FR-057, FR-061, FR-062, NFR-007, NFR-008.
 
-FR-050 through FR-057, NFR-007, NFR-008. Keys in Keychain, never in preferences.
-Registry bundled and refreshed, never blocking launch.
+### Which providers first — recommendation, pending Toni's word
 
-**Done when:** a real key is stored, verified against a live provider, and survives
-relaunch; the app works with the network down; and no credential appears in
-preferences or logs.
+**Start with `openai` and `anthropic` only.** Seven models: `gpt-5.6` ×4 variants,
+`claude-opus-4-8`, `claude-sonnet-5`, `claude-fable-5`.
+
+Why those two:
+
+- They're where most of the curated set lives, so the menu is useful immediately.
+- **They're the two competitors.** Cowork is Anthropic's; ChatGPT Work is OpenAI's.
+  Being the one app that runs both *is* the thesis, demonstrated on the sharpest
+  possible ground.
+- **Their APIs disagree in the way that matters.** Anthropic emits `tool_use` blocks;
+  OpenAI emits `tool_calls`. Two vendors that both spoke OpenAI's dialect would be a
+  fake test of the provider seam. These two make it a real one from day one.
+
+Everything else in the curated set — Google, xAI, DeepSeek, Zhipu, Alibaba, Meta,
+Moonshot — is deferred to a later increment. Most are OpenAI-compatible and cheap to add
+once the seam is proven; adding them before it's proven just multiplies unknowns.
+
+**Done when:** a real key for each of two vendors is stored, verified live, and survives
+relaunch; the app is fully usable with the network down; no credential appears in
+preferences or logs; and the menu shows only curated first-party models.
 
 ## Increment 3 — Runtime and neutrality research → ADR-0006
 
