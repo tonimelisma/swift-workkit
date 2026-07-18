@@ -1,6 +1,6 @@
 # Can a third-party app use someone's LLM subscription?
 
-**Last verified:** 2026-07-16
+**Last verified:** 2026-07-16 (OpenAI OAuth mechanism traced in full)
 **Why we looked:** Toni asked for ChatGPT **subscription** auth alongside API keys, and
 asked whether the same model works for other providers. PRODUCT.md §1 rests partly on
 "users already pay for a subscription and shouldn't pay again per app."
@@ -39,27 +39,88 @@ This is a third party asserting a second party's policy, with a commercial inter
 that assertion, and no source. It is not evidence about OpenAI's position. It is also
 not evidence *against* it — OpenAI genuinely hasn't said. The honest state is: unknown.
 
-### How the tools that do it anyway actually work
+### How the OpenAI Codex OAuth flow actually works
 
-Third-party tools (e.g. OpenClaw) take the Codex OAuth token, **run a localhost proxy,
-and translate requests into the Codex CLI's shape so OpenAI's auth check passes**, with
-the user's ChatGPT subscription paying.
+Researched 2026-07-16 across the Codex CLI's documented behaviour and several
+reverse-engineering write-ups (sources below). This is the mechanism in full.
 
-That is impersonating a first-party client to defeat an auth check. Not a grey area of
-interpretation — the mechanism only works *because* it lies about what it is. It is also
-exactly what Anthropic and Google shut down. Treating OpenAI's silence as permission is
-betting the product on a door nobody has closed *yet*.
+**The sign-in (OAuth 2.0 + PKCE, exactly as a native app does it):**
 
-### What this costs us if we do it anyway
+1. The client generates a PKCE verifier/challenge pair and starts a loopback HTTP
+   server on **`localhost:1455`**.
+2. It opens the browser to **`https://auth.openai.com/oauth/authorize`** with the
+   **public client id `app_EMoamEEZ73f0CkXaXp7hrann`** — OpenAI's Codex client — and
+   redirect `http://localhost:1455/auth/callback`.
+3. The user signs into ChatGPT in the browser. The callback returns an auth code.
+4. The client exchanges the code at **`https://auth.openai.com/oauth/token`** for an
+   **`id_token`** (JWT), an **`access_token`** (an OAuth token, *not* an API key), and a
+   **`refresh_token`**. The **`chatgpt_account_id`** is parsed out of the `id_token` JWT.
+5. Credentials are cached (Codex uses `~/.codex/auth.json`, plaintext, or the OS
+   credential store).
 
-- **It's our users who get banned, not us.** Anthropic suspends the *account* — that is
-  documented and enforced. For OpenAI no such enforcement is documented, so the risk is
-  unquantified rather than known-bad. Either way the exposure lands on non-technical
-  people who won't know they took it.
-- **Permanent cat-and-mouse.** The mechanism depends on a proxy mimicking a client we
-  don't control. Every Codex CLI release can break it.
-- **It poisons the legitimate path.** A vendor that sees us impersonating its CLI is not
-  a vendor that gives us a partnership later.
+**The inference call:**
+
+- Endpoint: **`https://chatgpt.com/backend-api/codex/responses`** — the Responses API
+  shape, on ChatGPT's backend, **not** `api.openai.com`.
+- `Authorization: Bearer <access_token>`, plus the account id and the headers/User-Agent
+  the Codex backend expects.
+- The access token expires in hours; refresh before expiry via the token endpoint with
+  the `refresh_token` and the same client id.
+
+**The crux — OpenAI segregates by endpoint and token type.** A subscription OAuth token
+works *only* against `chatgpt.com/backend-api/codex`; it fails on the normal
+`api.openai.com/v1/...`. And an ordinary API key fails on the Codex backend. So there is
+no "use your subscription against the normal API" path. The **only** way to bill a
+subscription is to present as the Codex client — its client id, its endpoint, its
+expected headers.
+
+**There are two variants**, differing only in where the token comes from:
+- **Piggyback:** reuse the `~/.codex/auth.json` that an installed official Codex CLI
+  already created.
+- **Own flow:** run the PKCE flow yourself using OpenAI's public Codex client id, then
+  hit the Codex backend directly. (OpenClaw's localhost-proxy approach is one packaging
+  of this.)
+
+### How much of a "hack" is this, really — a correction to my earlier framing
+
+Earlier in this project I called this "impersonating a first-party client to defeat an
+auth check… it lies about what it is," and used that to say I wouldn't build it. That was
+too strong, and the Cline data point below is why I'm walking it back.
+
+- The flow uses OpenAI's **public** OAuth client with **PKCE** — the standard design for
+  native/CLI clients precisely because the client id is not a secret. Using it is not the
+  same as stealing a private credential.
+- **[Cline](https://cline.bot/blog/introducing-openai-codex-oauth) — a funded, public dev-tools company — ships this openly** and markets it as
+  "sign in with your OpenAI account and instantly access all the models you're already
+  paying for." So do Cline's, EvanZhou's `openai-oauth`, and community OpenCode plugins.
+  This is not a fringe exploit.
+
+So the honest characterization is narrower than "it lies": **there is no sanctioned
+third-party path, so the only way to use a subscription is to present as the Codex
+client.** Whether that's "fine, it's a public client" or "outside intended use" is
+exactly what OpenAI hasn't said.
+
+### What it would cost us — measured, not asserted
+
+- **The exposure lands on the user's account.** The gist reverse-engineering this states
+  the licensing plainly: *"subscription auth is licensed for interactive Codex/ChatGPT
+  usage, not backend services,"* and misuse can trigger *"rate-limiting, suspension, or
+  termination."* OpenAI has not been observed enforcing this against third-party apps the
+  way Anthropic has — but the consequence, if they choose to, is the user's subscription,
+  not ours. For a non-technical user who won't understand the risk, that matters.
+- **Even the vendors doing it claim no permission.** Cline ships it and markets the UX,
+  but its announcement contains **zero** reference to OpenAI approval, no quote, no
+  partnership, and no risk disclosure. OpenClaw asserts "OpenAI explicitly supports" it
+  and cites nothing. So the ecosystem doing this provides *no* evidence OpenAI permits
+  it — they simply do it and don't discuss the risk.
+- **It tracks a client we don't control.** We'd pin to Codex's client id, endpoint, and
+  expected headers. An OpenAI change to any of those breaks us with no notice — the same
+  fragility that makes it a maintenance liability, separate from the policy question.
+- **`auth.json` is password-equivalent.** However we store the tokens, they grant use of
+  the user's paid account until revoked. That is a real secret-handling obligation.
+
+None of these is automatically disqualifying. Cline decided the tradeoff was worth it.
+The point is that the decision has these specific costs, not that it's free.
 
 ### What this means for the thesis
 
@@ -81,11 +142,16 @@ be solved as a product problem, not by impersonating someone's CLI.
 
 ## Open
 
-- **Whether OpenAI would sanction it via partnership.** No public program exists; docs
-  say to contact them. Unknown, and worth asking rather than assuming.
-- **Enterprise/Team plans.** All findings above concern consumer plans. Not investigated.
-- **Whether any provider offers a legitimate BYO-subscription path** for third parties.
-  Not found for the majors; smaller providers unexamined.
+- **Exact header set the Codex backend requires.** Sources confirm `Authorization: Bearer`
+  and that the account id and Codex-shaped headers/User-Agent matter, but did not pin the
+  exact header names (`ChatGPT-Account-Id`? `originator`?). Would need to be captured from
+  the real client before building.
+- **Whether OpenAI sanctions it via partnership.** No public program; docs say contact
+  them. Worth *asking OpenAI directly* rather than inferring from silence or from
+  OpenClaw's word.
+- **What OpenAI's rate limits are** on a subscription vs an API key for agentic loads —
+  materially affects whether this is even a good experience.
+- **Enterprise/Team plans.** Findings concern consumer plans.
 
 ## Sources
 
@@ -94,3 +160,8 @@ be solved as a product problem, not by impersonating someone's CLI.
 - [A Claude Code subscription is not a developer credential](https://yage.ai/share/claude-code-subscription-not-a-developer-credential-en-20260321.html)
 - [OpenAI Codex auth docs](https://learn.chatgpt.com/docs/auth) · [Using Codex with your ChatGPT plan](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan)
 - [OpenAI Services Agreement](https://openai.com/policies/services-agreement/)
+- [OpenAI Codex authentication docs](https://learn.chatgpt.com/docs/auth)
+- [Cline — bring your ChatGPT subscription (Codex OAuth)](https://cline.bot/blog/introducing-openai-codex-oauth)
+- [Codex CLI OAuth token reuse — how it works + why it's risky (gist)](https://gist.github.com/ravidsrk/4e72b774c044917cd260560ec5831e1d)
+- [Codex CLI authentication flows and credential management](https://codex.danielvaughan.com/2026/04/01/codex-cli-authentication-flows-credential-management/)
+- [EvanZhouDev/openai-oauth](https://github.com/EvanZhouDev/openai-oauth) · [OpenCode issue #3281 — sign-in with ChatGPT](https://github.com/anomalyco/opencode/issues/3281)
