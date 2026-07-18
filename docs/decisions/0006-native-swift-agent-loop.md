@@ -1,6 +1,6 @@
 # ADR-0006 — The agent loop is a native Swift module on the ADR-0007 adapters
 
-- **Status:** Proposed — awaiting Toni's acceptance
+- **Status:** Accepted (Toni, 2026-07-18: "This is the way")
 - **Date:** 2026-07-18
 - **Deciders:** Toni
 
@@ -83,6 +83,17 @@ eval hooks) are ours to build if ever needed.
 **Bounded.** If adapter maintenance grows past what two wire formats justify, the
 fallback is a normalization layer behind the same `ChatProvider` seam — the seam
 this decision deliberately keeps.
+
+**Extraction path (Toni, 2026-07-18: yes — "this is the way").** The loop is built
+so it can later be carved into a Pydantic-AI-style SPM package ("AgentKit"): the
+neutral conversation model + extras bag, the `ChatProvider` adapters, the
+`Tool`/`ToolRunner` abstraction, the turn state machine with provider failover, and
+the MCP client would move; the curated catalog, Keychain, trace store, built-in
+tool policy, and all UI stay in the app, injected through protocols. The enforcing
+discipline *now*, inside the monolith (ADR-0002 — no premature extraction): loop
+and tool layers hold only neutral types and never import the app layer. Extraction
+then is a mechanical move whenever it earns it. Boundary details:
+[plans/tool-architecture.md](../plans/tool-architecture.md) §2.
 
 ## Validation
 

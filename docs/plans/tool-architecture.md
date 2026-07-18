@@ -91,6 +91,14 @@ will come later," but the field exists from day one so retrofitting is a policy
 change, not a refactor), and no provider types anywhere in `Tools/` (the compile-time
 enforcement of FR-001: `Tools/` must not import the provider layer).
 
+**The package boundary (decided with ADR-0006).** These layers are written as if
+they were already a Pydantic-AI-style SPM package: the conversation model + extras
+bag, `ChatProvider` adapters, `Tool`/`ToolSpec`/`ToolRunner`, the loop, and the MCP
+client depend only on each other and Foundation — never on the catalog, Keychain,
+trace store, or UI, which the app injects via protocols (`TraceRecorder` is the
+pattern). Extraction to a real package is deferred per ADR-0002 and becomes a
+mechanical move when it earns it.
+
 ### The runner: where the context window is defended
 
 Tools return honest, complete output. A single `ToolRunner` sits between the loop and
