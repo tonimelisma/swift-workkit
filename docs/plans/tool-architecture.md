@@ -315,12 +315,27 @@ Answered by Toni (his words):
 3. ~~`fetch_url` extraction model~~ — paged markdown, no extraction call.
 5. ~~Office formats~~ — *"docx text in increment 5."* Sheets and slides later.
 
-Still open:
+Answered 2026-07-18 (Toni: *"I generally prefer native Swift"*, then "do it" on the
+recommendations):
 
-4. **Bundled ripgrep** if native search proves slow (measure first — see
-   `search_files`).
-6. **Does `list_folder`/`find_files`/`search_files` granularity match how Toni
-   imagines the product working?** The alternative — fewer, chattier tools — is a
-   product-feel question as much as an engineering one.
-7. **Which neutral search API** (Brave vs Exa vs other) — pick at implementation
-   time by pricing/ToS, per §3.
+4. ~~Bundled ripgrep~~ — **native Swift search**, no bundled binary: `FileManager`
+   walk + Swift's own `Regex`, streaming line-by-line with early exit. Users'
+   corpora are document folders, not monorepos. The measurement trigger in §3
+   stays as the escape hatch: if a realistic corpus measures painfully slow in
+   increment 5, swapping the engine behind the same tool spec is contained.
+6. ~~Tool granularity~~ — **keep the six file tools.** Conventionally-shaped
+   read/write/grep/glob-style tools are what every model is trained against —
+   necessary since none of our eleven vendors' models are RL-trained on a bespoke
+   set — and each call renders as a legible UI line (FR-065) for free.
+7. ~~Neutral search API~~ — **Brave.** A conventional SERP behaves identically to
+   the provider-hosted search tools, so the "one search tool per model, hosted
+   preferred" rule gives every model the same experience; Exa's semantic search
+   and content-return would make the fallback *different*, and its content
+   feature duplicates `fetch_url`. Verify pricing/ToS at implementation time;
+   that check may change the vendor, not the architecture.
+
+Nothing in this plan now requires shipping a foreign binary: SwiftSoup, the MCP
+swift-sdk, and ZIPFoundation (docx) are all pure Swift.
+
+No questions remain open. The next conversation this plan needs is a DOR for
+whichever increment builds its first phase.

@@ -22,6 +22,7 @@ Read the ones your increment touches. Do not read all of them by reflex.
 | [docs/engineering/ENGINEERING.md](docs/engineering/ENGINEERING.md) | How the system is built *right now* | Always reflects reality — never aspiration |
 | [docs/decisions/](docs/decisions/) | Why we chose this over the alternatives, at a point in time | Append-only; supersede, never rewrite |
 | [docs/research/](docs/research/) | What we learned from outside this repo | Living — update in place, don't append journal entries |
+| [docs/plans/](docs/plans/) | What we intend to build and how, in enough detail to start | A proposal until its increment's DOR; decisions recorded in place as Toni makes them |
 
 **ENGINEERING.md vs ADRs** is the distinction people get wrong. An ADR is a decision
 frozen at a moment, with the alternatives and the reasoning intact. ENGINEERING.md is
@@ -115,6 +116,27 @@ signal, not a bug in the scheme.
 An increment is one unit of deliverable work. **Code increments** use a worktree and a
 PR. **Doc-only increments** commit straight to main — no worktree, no PR — since they
 can't break anyone else's build.
+
+### Doc increments: the lightweight path
+
+Doc increments skip the full DOR/DOD ceremony below — that machinery exists to stop
+code being built on unverified assumptions, and a doc can't ship a bug to a build.
+What replaces it:
+
+**Gate (one question):** did Toni ask for this, and is what he asked for clear? An
+explicit request for research or a doc *is* the go-ahead — no separate DOR post, no
+waiting. Anything beyond what he asked for is an open question to ask, not a thing to
+write (Non-negotiable 0 applies to docs with full force — it was invented for one).
+
+**Done (short report, honest):**
+- Content traces to what was actually said, read, or measured — sources named,
+  Toni's words quoted where they're the authority
+- MECE holds: each fact lives in one doc and is linked from the others
+- Indexes and cross-references updated (research README, this file's doc table)
+- Committed straight to main, and anything stale the work uncovered is flagged
+  rather than silently left
+
+Everything below this line is the **code-increment** process.
 
 ### Before starting: Definition of Ready
 
