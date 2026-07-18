@@ -462,6 +462,23 @@ The POC may successfully deliver a **no-adopt** decision. Success means the evid
 complete and the architectural consequence is explicit; it does not mean forcing the
 hybrid to pass.
 
+## POC results — 2026-07-18
+
+**Result: no adoption decision. ADR-0006 remains unchanged.** The isolated package at
+`Experiments/FoundationModelsPOC/` compiles against the macOS 27 Foundation Models
+provider surface and its offline gate passes. It records three useful boundary checks:
+a Codable durable transcript strips provider-only metadata on model switch; OpenAI
+tool-call argument fragments remain partial rather than being flattened; and unsupported
+JSON Schema keywords fail with their keyword and path.
+
+This is **not the complete decision POC** described above. No credentials were supplied,
+so no DeepSeek, Google, or Anthropic two-request cycle was run and no scrubbed live
+fixtures exist. The transport executors and `LanguageModelSession` tool bridge therefore
+remain unproved, as do cancellation, retry, transcript reconstruction, and the schema
+compatibility table. Those are critical gates, not work that can be inferred from API
+inspection. The experiment remains an isolated conformance harness until a follow-up
+increment obtains the provider credentials and completes the recorded live cases.
+
 ### Explicitly out of scope
 
 - Production UI, task persistence, or migration of the current chat screen.
