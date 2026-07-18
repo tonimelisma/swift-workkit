@@ -464,20 +464,28 @@ hybrid to pass.
 
 ## POC results — 2026-07-18
 
-**Result: no adoption decision. ADR-0006 remains unchanged.** The isolated package at
+**Result: no adoption decision yet. ADR-0006 remains unchanged.** The isolated package at
 `Experiments/FoundationModelsPOC/` compiles against the macOS 27 Foundation Models
 provider surface and its offline gate passes. It records three useful boundary checks:
 a Codable durable transcript strips provider-only metadata on model switch; OpenAI
 tool-call argument fragments remain partial rather than being flattened; and unsupported
 JSON Schema keywords fail with their keyword and path.
 
-This is **not the complete decision POC** described above. No credentials were supplied,
-so no DeepSeek, Google, or Anthropic two-request cycle was run and no scrubbed live
-fixtures exist. The transport executors and `LanguageModelSession` tool bridge therefore
-remain unproved, as do cancellation, retry, transcript reconstruction, and the schema
-compatibility table. Those are critical gates, not work that can be inferred from API
-inspection. The experiment remains an isolated conformance harness until a follow-up
-increment obtains the provider credentials and completes the recorded live cases.
+On 2026-07-18, with the repository-root `.env` sourced by the invoking shell (the
+existing local credential convention), live non-streaming two-request cycles passed for
+DeepSeek `deepseek-v4-pro`, Google `gemini-3.5-flash`, and Anthropic `claude-sonnet-5`.
+Every case observed tool-call emission, a local `read_fixture` result, a second request,
+and a final response. The keys were neither printed nor recorded. DeepSeek's thinking
+mode rejected forced `tool_choice: required` (HTTP 400) but succeeded with its normal
+automatic tool selection; its second request included the complete assistant message
+returned by the first request, including opaque reasoning state.
+
+This is still **not the complete decision POC** described above. The live evidence was
+run directly against provider HTTP APIs, not through `LanguageModelExecutor` and
+`LanguageModelSession`; scrubbed fixtures have not yet been recorded. Executor/session
+semantics, cancellation, retry, transcript reconstruction, and the schema compatibility
+table remain critical gates. They cannot be inferred from direct HTTP success, so the
+experiment remains a conformance harness and ADR-0006 does not change.
 
 ### Explicitly out of scope
 
