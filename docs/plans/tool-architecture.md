@@ -15,6 +15,16 @@ tools operate on ordinary paths, and the permission/approval design is deferred
 wholesale. The `effect` field stays on `ToolSpec` (it's one enum and makes the later
 retrofit a policy change), but nothing enforces anything yet.
 
+**Update 2026-07-18:** the Foundation Models adaptation POC now passes all bounded
+technical gates, including live Apple-session cycles for DeepSeek, Google and
+Anthropic and a live provider switch. ADR-0006 is under reconsideration because the
+hybrid would make macOS 27 a real product minimum; Toni has not decided that yet. Do
+not implement this plan's custom wire-facing `Tool`/loop seam until that decision is
+resolved. If the hybrid is accepted, the host-owned policy contract below remains,
+but it is bridged to `FoundationModels.Tool`/`GenerationSchema`, while provider
+serialization moves into `LanguageModelExecutor` conformances. See
+[foundation-models-adaptation.md](../research/foundation-models-adaptation.md).
+
 Grounding: [agent-harness-builtin-tools.md](../research/agent-harness-builtin-tools.md)
 (Claude Code/Cowork, the ~40-tool typed style) and
 [codex-harness-tools.md](../research/codex-harness-tools.md) (Codex, the
@@ -141,6 +151,14 @@ source (built-in, MCP server, future connector) is one registry input, nothing e
 changes.
 
 ### The provider seam
+
+The following describes the currently accepted ADR-0006 design. The passing
+Foundation Models POC establishes a preferred replacement if the hybrid is accepted:
+`LanguageModelSession` owns the basic model/tool/model cycle, the two shipped
+transports conform to `LanguageModelExecutor`, and a wrapper exposes each richer host
+tool as `FoundationModels.Tool`. The host runner still owns trace-before-budget,
+timeouts, recoverable error output, effects, idempotency and resource scheduling;
+Apple's tool protocol is not the authorization or durability boundary.
 
 The loop (ADR-0006's subject) holds neutral types; each adapter owns both directions:
 `[ToolSpec] → wire format` (Anthropic `tools`/`input_schema`; OpenAI `tools[].function`;

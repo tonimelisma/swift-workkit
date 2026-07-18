@@ -4,7 +4,7 @@ import FoundationModels
 /// Production targets do not import FoundationModels during this spike.
 @available(macOS 27.0, *)
 public enum FoundationModelsSurface {
-    public static let requiredCapabilities = LanguageModelCapabilities(
-        capabilities: [.reasoning, .toolCalling]
-    )
+    public static let requiredCapabilities = LanguageModelCapabilities([
+        .reasoning, .toolCalling,
+    ])
 }

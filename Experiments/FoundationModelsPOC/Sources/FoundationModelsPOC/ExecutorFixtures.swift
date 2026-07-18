@@ -30,69 +30,78 @@ public enum FixtureParserError: LocalizedError, Equatable, Sendable {
 }
 
 public enum OpenAICompatibleFixtureParser {
-    private struct ToolState {
+    public static func events(from lines: [String]) throws -> [ExecutorEvent] {
+        var parser = OpenAICompatibleStreamParser()
+        var events: [ExecutorEvent] = []
+        for (offset, line) in lines.enumerated() {
+            events.append(contentsOf: try parser.consume(line, lineNumber: offset + 1))
+        }
+        return events
+    }
+}
+
+public struct OpenAICompatibleStreamParser: Sendable {
+    private struct ToolState: Sendable {
         var id = ""
         var name = ""
     }
 
-    public static func events(from lines: [String]) throws -> [ExecutorEvent] {
+    private var tools: [Int: ToolState] = [:]
+
+    public init() {}
+
+    public mutating func consume(_ line: String, lineNumber: Int) throws -> [ExecutorEvent] {
+        guard let object = try sseObject(from: line, lineNumber: lineNumber) else { return [] }
         var events: [ExecutorEvent] = []
-        var tools: [Int: ToolState] = [:]
 
-        for (offset, line) in lines.enumerated() {
-            guard let object = try sseObject(from: line, lineNumber: offset + 1) else { continue }
+        if let usage = object["usage"] as? [String: Any] {
+            let input = (usage["prompt_tokens"] ?? usage["input_tokens"]) as? Int ?? 0
+            let output = (usage["completion_tokens"] ?? usage["output_tokens"]) as? Int ?? 0
+            events.append(.usage(input: input, output: output))
+        }
 
-            if let usage = object["usage"] as? [String: Any] {
-                let input = (usage["prompt_tokens"] ?? usage["input_tokens"]) as? Int ?? 0
-                let output = (usage["completion_tokens"] ?? usage["output_tokens"]) as? Int ?? 0
-                events.append(.usage(input: input, output: output))
+        for choice in object["choices"] as? [[String: Any]] ?? [] {
+            let delta = choice["delta"] as? [String: Any] ?? [:]
+
+            if let reasoning = (delta["reasoning_content"] ?? delta["reasoning"]) as? String {
+                let signature = Self.googleThoughtSignature(in: delta)
+                var metadata: [String: String] = [:]
+                if let signature { metadata["google.thought_signature"] = signature }
+                events.append(.reasoning(text: reasoning, signature: signature, metadata: metadata))
+            } else if let signature = Self.googleThoughtSignature(in: delta) {
+                events.append(.reasoning(
+                    text: "",
+                    signature: signature,
+                    metadata: ["google.thought_signature": signature]
+                ))
             }
 
-            for choice in object["choices"] as? [[String: Any]] ?? [] {
-                let delta = choice["delta"] as? [String: Any] ?? [:]
+            if let content = delta["content"] as? String {
+                events.append(.response(text: content))
+            }
 
-                if let reasoning = (delta["reasoning_content"] ?? delta["reasoning"]) as? String {
-                    let signature = googleThoughtSignature(in: delta)
-                    var metadata: [String: String] = [:]
-                    if let signature {
-                        metadata["google.thought_signature"] = signature
-                    }
-                    events.append(.reasoning(text: reasoning, signature: signature, metadata: metadata))
-                } else if let signature = googleThoughtSignature(in: delta) {
-                    events.append(
-                        .reasoning(
-                            text: "",
-                            signature: signature,
-                            metadata: ["google.thought_signature": signature]
-                        )
-                    )
+            for call in delta["tool_calls"] as? [[String: Any]] ?? [] {
+                let index = call["index"] as? Int ?? 0
+                let function = call["function"] as? [String: Any] ?? [:]
+                var state = tools[index] ?? ToolState()
+                if let id = call["id"] as? String, !id.isEmpty { state.id = id }
+                if let name = function["name"] as? String, !name.isEmpty { state.name = name }
+                tools[index] = state
+                var metadata: [String: String] = [:]
+                if let signature = Self.googleThoughtSignature(in: call) {
+                    metadata["google.thought_signature"] = signature
                 }
+                events.append(.toolCall(
+                    index: index,
+                    id: state.id,
+                    name: state.name,
+                    argumentsFragment: function["arguments"] as? String ?? "",
+                    metadata: metadata
+                ))
+            }
 
-                if let content = delta["content"] as? String {
-                    events.append(.response(text: content))
-                }
-
-                for call in delta["tool_calls"] as? [[String: Any]] ?? [] {
-                    let index = call["index"] as? Int ?? 0
-                    let function = call["function"] as? [String: Any] ?? [:]
-                    var state = tools[index] ?? ToolState()
-                    if let id = call["id"] as? String, !id.isEmpty { state.id = id }
-                    if let name = function["name"] as? String, !name.isEmpty { state.name = name }
-                    tools[index] = state
-                    events.append(
-                        .toolCall(
-                            index: index,
-                            id: state.id,
-                            name: state.name,
-                            argumentsFragment: function["arguments"] as? String ?? "",
-                            metadata: [:]
-                        )
-                    )
-                }
-
-                if let finishReason = choice["finish_reason"] as? String {
-                    events.append(.finish(reason: finishReason))
-                }
+            if let finishReason = choice["finish_reason"] as? String {
+                events.append(.finish(reason: finishReason))
             }
         }
         return events
@@ -107,101 +116,104 @@ public enum OpenAICompatibleFixtureParser {
 }
 
 public enum AnthropicFixtureParser {
-    private struct ToolState {
+    public static func events(from lines: [String]) throws -> [ExecutorEvent] {
+        var parser = AnthropicStreamParser()
+        var events: [ExecutorEvent] = []
+        for (offset, line) in lines.enumerated() {
+            events.append(contentsOf: try parser.consume(line, lineNumber: offset + 1))
+        }
+        return events
+    }
+}
+
+public struct AnthropicStreamParser: Sendable {
+    private struct ToolState: Sendable {
         var id: String
         var name: String
     }
 
-    public static func events(from lines: [String]) throws -> [ExecutorEvent] {
+    private var tools: [Int: ToolState] = [:]
+    private var inputTokens = 0
+
+    public init() {}
+
+    public mutating func consume(_ line: String, lineNumber: Int) throws -> [ExecutorEvent] {
+        guard let object = try sseObject(from: line, lineNumber: lineNumber) else { return [] }
+        let type = object["type"] as? String
         var events: [ExecutorEvent] = []
-        var tools: [Int: ToolState] = [:]
-        var inputTokens = 0
 
-        for (offset, line) in lines.enumerated() {
-            guard let object = try sseObject(from: line, lineNumber: offset + 1) else { continue }
-            let type = object["type"] as? String
+        switch type {
+        case "message_start":
+            let message = object["message"] as? [String: Any]
+            let usage = message?["usage"] as? [String: Any]
+            inputTokens = usage?["input_tokens"] as? Int ?? 0
 
-            switch type {
-            case "message_start":
-                let message = object["message"] as? [String: Any]
-                let usage = message?["usage"] as? [String: Any]
-                inputTokens = usage?["input_tokens"] as? Int ?? 0
+        case "content_block_start":
+            let index = object["index"] as? Int ?? 0
+            let block = object["content_block"] as? [String: Any] ?? [:]
+            guard block["type"] as? String == "tool_use" else { return [] }
+            let state = ToolState(
+                id: block["id"] as? String ?? "",
+                name: block["name"] as? String ?? ""
+            )
+            tools[index] = state
+            if let initialInput = block["input"] as? [String: Any], !initialInput.isEmpty {
+                let data = try JSONSerialization.data(withJSONObject: initialInput, options: [.sortedKeys])
+                events.append(.toolCall(
+                    index: index,
+                    id: state.id,
+                    name: state.name,
+                    argumentsFragment: String(decoding: data, as: UTF8.self),
+                    metadata: [:]
+                ))
+            }
 
-            case "content_block_start":
-                let index = object["index"] as? Int ?? 0
-                let block = object["content_block"] as? [String: Any] ?? [:]
-                guard block["type"] as? String == "tool_use" else { continue }
-                let state = ToolState(
-                    id: block["id"] as? String ?? "",
-                    name: block["name"] as? String ?? ""
-                )
-                tools[index] = state
-                if let initialInput = block["input"] as? [String: Any], !initialInput.isEmpty {
-                    let data = try JSONSerialization.data(withJSONObject: initialInput, options: [.sortedKeys])
-                    events.append(
-                        .toolCall(
-                            index: index,
-                            id: state.id,
-                            name: state.name,
-                            argumentsFragment: String(decoding: data, as: UTF8.self),
-                            metadata: [:]
-                        )
-                    )
+        case "content_block_delta":
+            let index = object["index"] as? Int ?? 0
+            let delta = object["delta"] as? [String: Any] ?? [:]
+            switch delta["type"] as? String {
+            case "text_delta":
+                events.append(.response(text: delta["text"] as? String ?? ""))
+            case "thinking_delta":
+                events.append(.reasoning(
+                    text: delta["thinking"] as? String ?? "",
+                    signature: nil,
+                    metadata: [:]
+                ))
+            case "signature_delta":
+                let signature = delta["signature"] as? String ?? ""
+                events.append(.reasoning(
+                    text: "",
+                    signature: signature,
+                    metadata: ["anthropic.signature": signature]
+                ))
+            case "input_json_delta":
+                guard let state = tools[index] else {
+                    throw FixtureParserError.missingToolBlock(index: index, line: lineNumber)
                 }
-
-            case "content_block_delta":
-                let index = object["index"] as? Int ?? 0
-                let delta = object["delta"] as? [String: Any] ?? [:]
-                switch delta["type"] as? String {
-                case "text_delta":
-                    events.append(.response(text: delta["text"] as? String ?? ""))
-                case "thinking_delta":
-                    events.append(
-                        .reasoning(
-                            text: delta["thinking"] as? String ?? "",
-                            signature: nil,
-                            metadata: [:]
-                        )
-                    )
-                case "signature_delta":
-                    let signature = delta["signature"] as? String ?? ""
-                    events.append(
-                        .reasoning(
-                            text: "",
-                            signature: signature,
-                            metadata: ["anthropic.signature": signature]
-                        )
-                    )
-                case "input_json_delta":
-                    guard let state = tools[index] else {
-                        throw FixtureParserError.missingToolBlock(index: index, line: offset + 1)
-                    }
-                    events.append(
-                        .toolCall(
-                            index: index,
-                            id: state.id,
-                            name: state.name,
-                            argumentsFragment: delta["partial_json"] as? String ?? "",
-                            metadata: [:]
-                        )
-                    )
-                default:
-                    break
-                }
-
-            case "message_delta":
-                let delta = object["delta"] as? [String: Any] ?? [:]
-                let usage = object["usage"] as? [String: Any] ?? [:]
-                if let outputTokens = usage["output_tokens"] as? Int {
-                    events.append(.usage(input: inputTokens, output: outputTokens))
-                }
-                if let stopReason = delta["stop_reason"] as? String {
-                    events.append(.finish(reason: stopReason))
-                }
-
+                events.append(.toolCall(
+                    index: index,
+                    id: state.id,
+                    name: state.name,
+                    argumentsFragment: delta["partial_json"] as? String ?? "",
+                    metadata: [:]
+                ))
             default:
                 break
             }
+
+        case "message_delta":
+            let delta = object["delta"] as? [String: Any] ?? [:]
+            let usage = object["usage"] as? [String: Any] ?? [:]
+            if let outputTokens = usage["output_tokens"] as? Int {
+                events.append(.usage(input: inputTokens, output: outputTokens))
+            }
+            if let stopReason = delta["stop_reason"] as? String {
+                events.append(.finish(reason: stopReason))
+            }
+
+        default:
+            break
         }
         return events
     }

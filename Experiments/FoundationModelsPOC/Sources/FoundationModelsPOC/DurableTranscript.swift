@@ -17,6 +17,7 @@ public enum TranscriptArchiveError: LocalizedError, Equatable, Sendable {
 @available(macOS 27.0, *)
 public struct TranscriptArchive: Codable, Sendable {
     public static let currentVersion = 1
+    public static let signatureProviderMetadataKey = "neutral.signature_provider"
 
     public var version: Int
     public var transcript: Transcript
@@ -38,29 +39,29 @@ public struct TranscriptArchive: Codable, Sendable {
 
     /// Returns a replay archive that retains neutral metadata and metadata owned by
     /// the destination provider while preserving Apple's typed transcript entries.
-    public func replay(for provider: String) throws -> TranscriptArchive {
+    public func replay(to destinationProvider: String) throws -> TranscriptArchive {
         TranscriptArchive(
             version: version,
             transcript: Transcript(entries: try transcript.map { entry in
-                try Self.filtered(entry, for: provider)
+                try Self.filtered(entry, destinationProvider: destinationProvider)
             })
         )
     }
 
     private static func filtered(
         _ entry: Transcript.Entry,
-        for provider: String
+        destinationProvider: String
     ) throws -> Transcript.Entry {
         switch entry {
         case .prompt(var prompt):
-            prompt.metadata = filtered(prompt.metadata, for: provider)
+            prompt.metadata = filtered(prompt.metadata, for: destinationProvider)
             return .prompt(prompt)
 
         case let .toolCalls(toolCalls):
             let calls = toolCalls.map { call in
                 Transcript.ToolCall(
                     id: call.id,
-                    metadata: filtered(call.metadata, for: provider),
+                    metadata: filtered(call.metadata, for: destinationProvider),
                     toolName: call.toolName,
                     arguments: call.arguments
                 )
@@ -71,18 +72,24 @@ public struct TranscriptArchive: Codable, Sendable {
             return .response(
                 Transcript.Response(
                     id: response.id,
-                    metadata: filtered(response.metadata, for: provider),
+                    metadata: filtered(response.metadata, for: destinationProvider),
                     segments: response.segments
                 )
             )
 
         case let .reasoning(reasoning):
+            var metadata = filtered(reasoning.metadata, for: destinationProvider)
+            let signatureProvider = reasoning.metadata[signatureProviderMetadataKey] as? String
+            let destinationOwnsSignature = signatureProvider == destinationProvider
+            if !destinationOwnsSignature {
+                metadata.removeValue(forKey: signatureProviderMetadataKey)
+            }
             return .reasoning(
                 Transcript.Reasoning(
                     id: reasoning.id,
-                    metadata: filtered(reasoning.metadata, for: provider),
+                    metadata: metadata,
                     segments: reasoning.segments,
-                    signature: reasoning.signature
+                    signature: destinationOwnsSignature ? reasoning.signature : nil
                 )
             )
 

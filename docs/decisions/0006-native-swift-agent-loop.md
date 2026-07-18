@@ -1,6 +1,8 @@
 # ADR-0006 — The agent loop is a native Swift module on the ADR-0007 adapters
 
-- **Status:** Accepted (Toni, 2026-07-18: "This is the way")
+- **Status:** Accepted, under active reconsideration. The Foundation Models technical
+  trigger now passes; replacing this decision still requires Toni to accept the hybrid
+  and macOS 27 minimum explicitly.
 - **Date:** 2026-07-18
 - **Deciders:** Toni
 
@@ -61,11 +63,17 @@ in-process loop, MCP, session persistence. Rejected as a dependency: v0.10, ~26
 stars, one maintainer, Claude-first design. Kept as a reference implementation —
 it also proves the job is solo-sized in Swift.
 
-**Apple Foundation Models provider protocol (WWDC26)** — Apple's own neutral
-`LanguageModel`/`Transcript` abstraction; Anthropic and Google have announced Swift
-packages. Rejected for now: macOS 27 minimum, vendor packages not yet shipped, and
-eleven curated providers will not all appear on Apple's cadence. Watch; imitate its
-`Transcript` typing; revisit when the curated vendors actually ship.
+**Apple Foundation Models provider/session substrate (WWDC26)** — Apple's neutral
+`LanguageModel`/`LanguageModelExecutor`/`Transcript` abstraction plus a session-owned
+tool loop. The original rejection assumed Work Agent had to wait for vendor packages.
+That premise is now false: the app can conform its own two HTTP transports. The POC
+passes scripted semantics, all three live provider/session cycles and a live
+DeepSeek-to-Anthropic switch while preserving/stripping provider state correctly.
+This is now the recommended alternative, with Work Agent retaining the durable task
+coordinator, policy, tool host, checkpoints, interrupts, trace and evals around Apple's
+intelligence session. It is not yet the accepted decision because it makes macOS 27 a
+real product minimum, which Toni has not decided. Evidence:
+[research/foundation-models-adaptation.md](../research/foundation-models-adaptation.md).
 
 ## Consequences
 
@@ -101,3 +109,9 @@ Tool calling verified live over both adapter formats before deciding (five
 providers, streaming shapes captured, round-trips completed, quirks documented) —
 see the research doc. The loop lands in increment 4; its DOD requires the
 round-trip smoke against every funded provider.
+
+The reconsideration POC now also passes 19 offline conformance/semantics tests, a real
+scripted Apple session, live Apple-session tool cycles for DeepSeek, Google and
+Anthropic, and a live DeepSeek-to-Anthropic reconstructed-session switch. This meets
+the technical revisit trigger. Do not begin the old custom-loop implementation until
+Toni resolves the minimum-OS/hybrid decision.
