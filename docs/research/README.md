@@ -40,3 +40,4 @@ evidence has to be redone the moment anyone doubts it — which defeats the poin
 | [llm-provider-registries.md](llm-provider-registries.md) | models.dev and alternatives; live API measurements and gaps | 2026-07-16 |
 | [provider-subscription-auth.md](provider-subscription-auth.md) | Whether a third-party app may use someone's ChatGPT/Claude subscription (no) | 2026-07-16 |
 | [agent-harness-builtin-tools.md](agent-harness-builtin-tools.md) | Built-in tools in Claude Code/Cowork: full inventory, limits, and how tool output is kept from flooding the context window | 2026-07-17 |
+| [codex-harness-tools.md](codex-harness-tools.md) | Codex's harness read from source: minimal tool set, PTY sessions, token budgets, sandbox-vs-approval axes | 2026-07-17 |
