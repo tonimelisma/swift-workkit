@@ -36,18 +36,24 @@ probe_openai_compatible() {
   local endpoint=$2
   local key=$3
   local signature_query=$4
-  local first_body first_code second_body second_code
+  local first_body first_code second_body second_code result
 
   first_body=$(jq -n --arg model "$model" --arg prompt "$prompt" --argjson tool "$openai_tool" '{model:$model,messages:[{role:"user",content:$prompt}],tools:[$tool],stream:false}')
   first_code=$(curl -sS -o "$probe_dir/first.json" -w '%{http_code}' "$endpoint" -H "Authorization: Bearer $key" -H 'Content-Type: application/json' --data "$first_body")
+  if [[ "$first_code" != 200 ]]; then
+    jq -n --arg provider "$provider" --arg code "$first_code" --slurpfile first "$probe_dir/first.json" '{provider:$provider,firstHTTP:($code|tonumber),error:($first[0].error.message // null)}'
+    return 1
+  fi
   second_body=$(jq -n --arg model "$model" --arg prompt "$prompt" --arg result "$tool_result" --argjson tool "$openai_tool" --slurpfile first "$probe_dir/first.json" '{model:$model,messages:[{role:"user",content:$prompt},$first[0].choices[0].message,{role:"tool",tool_call_id:$first[0].choices[0].message.tool_calls[0].id,content:$result}],tools:[$tool],stream:false}')
   second_code=$(curl -sS -o "$probe_dir/second.json" -w '%{http_code}' "$endpoint" -H "Authorization: Bearer $key" -H 'Content-Type: application/json' --data "$second_body")
 
-  jq -n --arg provider "$provider" --arg first_code "$first_code" --arg second_code "$second_code" --arg signature_query "$signature_query" --slurpfile first "$probe_dir/first.json" --slurpfile second "$probe_dir/second.json" '{provider:$provider,firstHTTP:($first_code|tonumber),emittedToolCall:($first[0].choices[0].message.tool_calls[0].function.name == "read_fixture"),providerStatePresent:(if $signature_query == "deepseek" then (($first[0].choices[0].message.reasoning_content // "")|length > 0) else (([$first[0].choices[0].message.extra_content.google.thought_signature,$first[0].choices[0].message.tool_calls[0].extra_content.google.thought_signature]|map(select(. != null))|length) > 0) end),secondHTTP:($second_code|tonumber),finalResponsePresent:(($second[0].choices[0].message.content // "")|length > 0),error:($second[0].error.message // $first[0].error.message // null)}'
+  result=$(jq -n --arg provider "$provider" --arg first_code "$first_code" --arg second_code "$second_code" --arg signature_query "$signature_query" --slurpfile first "$probe_dir/first.json" --slurpfile second "$probe_dir/second.json" '{provider:$provider,firstHTTP:($first_code|tonumber),emittedToolCall:($first[0].choices[0].message.tool_calls[0].function.name == "read_fixture"),providerStatePresent:(if $signature_query == "deepseek" then (($first[0].choices[0].message.reasoning_content // "")|length > 0) else (([$first[0].choices[0].message.extra_content.google.thought_signature,$first[0].choices[0].message.tool_calls[0].extra_content.google.thought_signature]|map(select(. != null))|length) > 0) end),secondHTTP:($second_code|tonumber),finalResponsePresent:(($second[0].choices[0].message.content // "")|length > 0),error:($second[0].error.message // $first[0].error.message // null)}')
+  print -r -- "$result"
+  print -r -- "$result" | jq -e '(.firstHTTP == 200) and .emittedToolCall and .providerStatePresent and (.secondHTTP == 200) and .finalResponsePresent and (.error == null)' >/dev/null
 }
 
 probe_anthropic() {
-  local first_body first_code second_body second_code
+  local first_body first_code second_body second_code result
   first_body=$(jq -n --arg prompt "$prompt" --argjson tool "$anthropic_tool" '{model:"claude-sonnet-5",max_tokens:4096,thinking:{type:"adaptive"},output_config:{effort:"max"},messages:[{role:"user",content:$prompt}],tools:[$tool],stream:false}')
   first_code=$(curl -sS -o "$probe_dir/first.json" -w '%{http_code}' https://api.anthropic.com/v1/messages -H "x-api-key: $ANTHROPIC_API_KEY" -H 'anthropic-version: 2023-06-01' -H 'Content-Type: application/json' --data "$first_body")
   if [[ "$first_code" != 200 ]]; then
@@ -56,7 +62,9 @@ probe_anthropic() {
   fi
   second_body=$(jq -n --arg prompt "$prompt" --arg result "$tool_result" --argjson tool "$anthropic_tool" --slurpfile first "$probe_dir/first.json" '{model:"claude-sonnet-5",max_tokens:4096,thinking:{type:"adaptive"},output_config:{effort:"max"},messages:[{role:"user",content:$prompt},{role:"assistant",content:$first[0].content},{role:"user",content:[{type:"tool_result",tool_use_id:($first[0].content[]|select(.type=="tool_use")|.id),content:$result}]}],tools:[$tool],stream:false}')
   second_code=$(curl -sS -o "$probe_dir/second.json" -w '%{http_code}' https://api.anthropic.com/v1/messages -H "x-api-key: $ANTHROPIC_API_KEY" -H 'anthropic-version: 2023-06-01' -H 'Content-Type: application/json' --data "$second_body")
-  jq -n --arg first_code "$first_code" --arg second_code "$second_code" --slurpfile first "$probe_dir/first.json" --slurpfile second "$probe_dir/second.json" '{provider:"anthropic",firstHTTP:($first_code|tonumber),emittedToolCall:([$first[0].content[]?|select(.type=="tool_use" and .name=="read_fixture")]|length > 0),providerStatePresent:([$first[0].content[]?|select(.type=="thinking")|select((.signature|type)=="string" and (.signature|length)>0)]|length > 0),secondHTTP:($second_code|tonumber),finalResponsePresent:([$second[0].content[]?|select(.type=="text" and ((.text // "")|length > 0))]|length > 0),error:($second[0].error.message // null)}'
+  result=$(jq -n --arg first_code "$first_code" --arg second_code "$second_code" --slurpfile first "$probe_dir/first.json" --slurpfile second "$probe_dir/second.json" '{provider:"anthropic",firstHTTP:($first_code|tonumber),emittedToolCall:([$first[0].content[]?|select(.type=="tool_use" and .name=="read_fixture")]|length > 0),providerStatePresent:([$first[0].content[]?|select(.type=="thinking")|select((.signature|type)=="string" and (.signature|length)>0)]|length > 0),secondHTTP:($second_code|tonumber),finalResponsePresent:([$second[0].content[]?|select(.type=="text" and ((.text // "")|length > 0))]|length > 0),error:($second[0].error.message // null)}')
+  print -r -- "$result"
+  print -r -- "$result" | jq -e '(.firstHTTP == 200) and .emittedToolCall and .providerStatePresent and (.secondHTTP == 200) and .finalResponsePresent and (.error == null)' >/dev/null
 }
 
 case "$provider" in

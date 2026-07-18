@@ -35,22 +35,16 @@ public enum SchemaBridge {
             )
         }
 
-        let supportedKeywords: Set<String> = [
+        let recognizedKeywords: Set<String> = [
             "type", "enum", "items", "properties", "required", "additionalProperties",
         ]
-        if let keyword = object.keys.filter({ !supportedKeywords.contains($0) }).sorted().first {
+        if let keyword = object.keys.filter({ !recognizedKeywords.contains($0) }).sorted().first {
             throw SchemaBridgeError.unsupported(keyword: keyword, path: path)
-        }
-
-        if let additionalProperties = object["additionalProperties"] {
-            guard let allowsAdditionalProperties = additionalProperties as? Bool,
-                  !allowsAdditionalProperties else {
-                throw SchemaBridgeError.unsupported(keyword: "additionalProperties", path: path)
-            }
         }
 
         switch object["type"] as? String {
         case "string":
+            try rejectUnexpectedKeywords(in: object, allowed: ["type", "enum"], path: path)
             guard let enumValue = object["enum"] else { return .string }
             guard let values = enumValue as? [Any], !values.isEmpty else {
                 throw SchemaBridgeError.invalid(
@@ -72,15 +66,19 @@ public enum SchemaBridge {
             return .enumeration(strings)
 
         case "integer":
+            try rejectUnexpectedKeywords(in: object, allowed: ["type"], path: path)
             return .integer
 
         case "number":
+            try rejectUnexpectedKeywords(in: object, allowed: ["type"], path: path)
             return .number
 
         case "boolean":
+            try rejectUnexpectedKeywords(in: object, allowed: ["type"], path: path)
             return .boolean
 
         case "array":
+            try rejectUnexpectedKeywords(in: object, allowed: ["type", "items"], path: path)
             guard let items = object["items"] else {
                 throw SchemaBridgeError.invalid(
                     keyword: "items",
@@ -91,7 +89,33 @@ public enum SchemaBridge {
             return .array(try parse(items, path: "\(path).items"))
 
         case "object":
-            let rawProperties = object["properties"] as? [String: Any] ?? [:]
+            try rejectUnexpectedKeywords(
+                in: object,
+                allowed: ["type", "properties", "required", "additionalProperties"],
+                path: path
+            )
+            if let additionalProperties = object["additionalProperties"] {
+                guard let allowsAdditionalProperties = additionalProperties as? Bool,
+                      !allowsAdditionalProperties else {
+                    throw SchemaBridgeError.unsupported(
+                        keyword: "additionalProperties",
+                        path: path
+                    )
+                }
+            }
+            let rawProperties: [String: Any]
+            if let properties = object["properties"] {
+                guard let properties = properties as? [String: Any] else {
+                    throw SchemaBridgeError.invalid(
+                        keyword: "properties",
+                        path: path,
+                        reason: "expected an object"
+                    )
+                }
+                rawProperties = properties
+            } else {
+                rawProperties = [:]
+            }
             let required: Set<String>
             if let rawRequired = object["required"] {
                 guard let names = rawRequired as? [String] else {
@@ -127,6 +151,16 @@ public enum SchemaBridge {
                 path: path,
                 reason: "expected string, integer, number, boolean, array, or object"
             )
+        }
+    }
+
+    private static func rejectUnexpectedKeywords(
+        in object: [String: Any],
+        allowed: Set<String>,
+        path: String
+    ) throws {
+        if let keyword = object.keys.filter({ !allowed.contains($0) }).sorted().first {
+            throw SchemaBridgeError.unsupported(keyword: keyword, path: path)
         }
     }
 

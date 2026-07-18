@@ -54,22 +54,24 @@ actual Work Agent task demands them.
 
 There is no neutral framework-usage census. GitHub stars are a noisy measure of
 attention, not production adoption or quality, but they are public and comparable.
-The table uses a GitHub API snapshot on 2026-07-18 and includes the major open-source
-frameworks above roughly 18,000 stars that expose an agent loop or agent workflow.
+The table uses a GitHub API snapshot on 2026-07-18 and includes the eleven major
+open-source frameworks above roughly 18,000 stars that expose an agent loop or agent workflow.
 The repositories are linked so the number can be refreshed rather than treated as
 timeless fact.
 
 | Framework | GitHub stars | Center of gravity | Developer-facing strength |
 |---|---:|---|---|
-| [Microsoft AutoGen](https://github.com/microsoft/autogen) | 59,809 | Event-driven single- and multi-agent systems | Many team patterns, termination conditions, save/load state, distributed runtime |
-| [CrewAI](https://github.com/crewAIInc/crewAI) | 55,737 | Role-oriented crews plus deterministic flows | Fast multi-agent composition, batteries-included memory, guardrails, observability |
-| [LlamaIndex](https://github.com/run-llama/llama_index) | 50,928 | Agents over data and retrieval | Deep data/RAG ecosystem, tools and tool specs, event-driven workflows |
-| [LangGraph](https://github.com/langchain-ai/langgraph) | 37,560 | Durable stateful orchestration runtime | Checkpointing, interrupts, replay, explicit state/graph control |
+| [Microsoft AutoGen](https://github.com/microsoft/autogen) | 59,811 | Event-driven single- and multi-agent systems | Many team patterns, termination conditions, save/load state, distributed runtime |
+| [CrewAI](https://github.com/crewAIInc/crewAI) | 55,738 | Role-oriented crews plus deterministic flows | Fast multi-agent composition, batteries-included memory, guardrails, observability |
+| [LlamaIndex](https://github.com/run-llama/llama_index) | 50,929 | Agents over data and retrieval | Deep data/RAG ecosystem, tools and tool specs, event-driven workflows |
+| [Agno](https://github.com/agno-agi/agno) | 41,226 | Agent-platform SDK and control plane | Agents, teams, workflows, sessions, memory, knowledge, traces, evals and deployment |
+| [LangGraph](https://github.com/langchain-ai/langgraph) | 37,567 | Durable stateful orchestration runtime | Checkpointing, interrupts, replay, explicit state/graph control |
+| [Hugging Face smolagents](https://github.com/huggingface/smolagents) | 28,425 | Minimal tool-calling and code-agent runtime | Small inspectable loop, code actions, broad tools/models, memory/replay and sandbox choices |
 | [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) | 27,994 | Lightweight agent loop with OpenAI-native features | Small API, handoffs, tools, guardrails, sessions, tracing, approvals |
-| [Mastra](https://github.com/mastra-ai/mastra) | 26,317 | Full TypeScript agent application stack | Agents, workflows, memory, MCP, storage, evals, observability, deployment |
-| [Vercel AI SDK](https://github.com/vercel/ai) | 25,629 | TypeScript model/UI primitives and a thin tool loop | Excellent streaming/UI integration, broad providers, per-step loop control |
-| [Google ADK](https://github.com/google/adk-python) | 20,654 | Production agent development across languages | Model adapters, sessions/context, graph workflows, eval and deployment tooling |
-| [Pydantic AI](https://github.com/pydantic/pydantic-ai) | 18,634 | Type-safe Python agents and workflows | Typed dependencies/output, validation/retries, broad providers, evals and durable integrations |
+| [Mastra](https://github.com/mastra-ai/mastra) | 26,318 | Full TypeScript agent application stack | Agents, workflows, memory, MCP, storage, evals, observability, deployment |
+| [Vercel AI SDK](https://github.com/vercel/ai) | 25,631 | TypeScript model/UI primitives and a thin tool loop | Excellent streaming/UI integration, broad providers, per-step loop control |
+| [Google ADK](https://github.com/google/adk-python) | 20,658 | Production agent development across languages | Model adapters, sessions/context, graph workflows, eval and deployment tooling |
+| [Pydantic AI](https://github.com/pydantic/pydantic-ai) | 18,636 | Type-safe Python agents and workflows | Typed dependencies/output, validation/retries, broad providers, evals and durable integrations |
 
 Two qualifications matter:
 
@@ -77,6 +79,15 @@ Two qualifications matter:
   reflects its data/RAG ecosystem too.
 - Framework repository stars reward breadth. A small embeddable runtime should not
   use feature count as its success metric.
+- Popularity alone misses strategically important platform SDKs. Microsoft Agent
+  Framework, Claude Agent SDK and AWS Strands are covered below even though their
+  current repositories are under the table's threshold.
+
+This is comprehensive for that declared cohort, not a claim to cover every project
+calling itself an agent framework. The cutoff is reproducible; the additional
+first-party SDKs cover the major platform direction that stars miss. A lower-adoption
+framework should be added only when it contributes a distinct capability or ecosystem
+lesson, not to inflate the checklist.
 
 ---
 
@@ -144,6 +155,37 @@ and [MCP integration](https://docs.llamaindex.ai/en/stable/module_guides/mcp/).
 valuable by owning a developer problem beyond the generic loop. Work Agent's analogous
 domain is native, user-controlled work on Apple platforms—not RAG. It should not absorb
 LlamaIndex's data stack unless a real product task requires it.
+
+### Agno: the framework is becoming an agent platform
+
+Agno's current proposition is broader than an in-process loop. Its SDK exposes
+agents, teams and workflows; sessions, memory, knowledge, human-in-the-loop,
+guardrails, tracing and evals feed an AgentOS control plane that can also host agents
+built with other frameworks. See the official [SDK introduction](https://docs.agno.com/sdk/introduction)
+and [agent overview](https://docs.agno.com/agents/overview).
+
+**Compared with Work Agent:** Agno demonstrates the commercial pull toward one
+integrated prototype-to-production platform. That is useful evidence for explicit
+storage, inspection and evaluation contracts, but its fleet/server control plane is
+the opposite of Work Agent's local native product boundary. Interoperability with an
+external runtime is more relevant than copying AgentOS.
+
+### smolagents: simplicity and executable actions are the thesis
+
+Hugging Face smolagents deliberately keeps its core loop small and offers both JSON
+tool-calling agents and code agents. Around that core it provides step memory and
+replay, planning, managed agents, telemetry, MCP/tool adapters, human interaction and
+several code-execution isolation choices. Its security guidance is unusually direct:
+local model-written code is inherently risky and only a real isolation boundary can
+contain the full class of failures. See the [framework overview](https://huggingface.co/docs/smolagents/main/index),
+[agent reference](https://huggingface.co/docs/smolagents/main/reference/agents) and
+[secure execution guidance](https://huggingface.co/docs/smolagents/main/tutorials/secure_code_execution).
+
+**Compared with Work Agent:** smolagents validates a small, understandable loop and
+shows why a framework needs a sharp execution thesis. Work Agent should preserve
+ordinary typed tool calls for safe host integration; if it later supports model-written
+Swift or shell code, that must be an explicitly sandboxed tool capability rather than
+an alternate invisible loop.
 
 ### OpenAI Agents SDK: a small loop surrounded by production hooks
 
@@ -224,6 +266,36 @@ clarify composition, macros for schema derivation only if they pay for themselve
 compiler-enforced isolation should replace Python-style runtime conventions rather
 than imitate them.
 
+### Current platform SDKs below the popularity cutoff
+
+Three lower-star projects matter because they are first-party platform direction, not
+because their repository counts are large:
+
+- **Microsoft Agent Framework** is the production successor to AutoGen and Semantic
+  Kernel. It combines agents, tools, skills, context providers and three middleware
+  layers with A2A interoperability, explicit workflows, human input, superstep
+  checkpoints and an optional durable-execution extension. Its own journey recommends
+  workflows only when a simpler model-directed agent cannot guarantee the required
+  order. See [the workflow journey](https://learn.microsoft.com/en-us/agent-framework/journey/workflows),
+  [middleware](https://learn.microsoft.com/en-us/agent-framework/agents/middleware/)
+  and [checkpoints](https://learn.microsoft.com/en-us/agent-framework/workflows/checkpoints).
+- **Claude Agent SDK** packages Anthropic's coding-agent harness: sessions/resume,
+  built-in computer tools, MCP, subagents, permissions and lifecycle hooks that can
+  allow, deny or rewrite tool activity. See the official [overview](https://code.claude.com/docs/en/agent-sdk/overview)
+  and [hooks](https://code.claude.com/docs/en/agent-sdk/hooks). Its lesson is the value
+  of a cohesive work harness, but it is intentionally Claude-centered rather than a
+  neutral embeddable runtime.
+- **AWS Strands Agents** provides a customizable model-driven loop, multiple model
+  providers, tools/MCP, multi-agent patterns, hooks and OpenTelemetry-oriented
+  observability across Python and TypeScript. See the [SDK repository](https://github.com/strands-agents/harness-sdk)
+  and [API documentation](https://strandsagents.com/docs/api/python/). Its strongest
+  lesson is pluggable lifecycle interception without forcing a graph abstraction.
+
+Microsoft's consolidation also changes how the historical AutoGen row should be read:
+AutoGen remains highly popular and instructive, but new Microsoft framework adoption
+should be evaluated against Agent Framework rather than assuming AutoGen is the
+long-term standalone API.
+
 ---
 
 ## Direct assessment of Work Agent's proposed loop
@@ -279,16 +351,16 @@ runtime around that intelligence session:
 
 | Capability | Foundation Models 27 | Common framework layer | Native Work Agent layer |
 |---|---|---|---|
-| Model/tool/model cycle | `LanguageModelSession` | Agent runner | Use Apple when its runtime contract passes; retain an app-owned coordinator. |
+| Model/tool/model cycle | `LanguageModelSession` | Agent runner | Use Apple: scripted and three-provider live cycles pass; retain an app-owned coordinator. |
 | Provider translation | `LanguageModelExecutor` | Provider adapters and middleware | First-party OpenAI-compatible and Anthropic executors, conformance fixtures, routing and failover. |
 | Conversation representation | Codable `Transcript`, metadata, custom segments | Normalized messages plus provider extensions | Archive the Apple transcript; do not create a shadow message hierarchy. |
 | Typed tools and output | `Tool`, `Generable`, `GenerationSchema` | Tool decorators, validation, output parsers | Wrap tools with host policy, effects, idempotency, resource locks, artifacts and budgets. |
 | Dynamic context | Profiles and `historyTransform` | Context processors, summaries, memory | Injected context assembler with exact request snapshots, privacy filtering and artifact paging. |
 | Persistence | Codable session transcript | Sessions, stores, graph checkpoints | Append-only run journal, versioned checkpoints, migration and restart-safe resume. |
 | Human control | Live async suspension is possible | Interrupts, approvals and guardrails | Serializable interrupts, preview/diff, approval evidence and rejection/correction paths. |
-| Reliability | Session errors and cancellation | Retry, fallback, circuit breaker, limits | Attempt-atomic retries, indeterminate side-effect recovery, provider fallback and run policies. |
+| Reliability | Cancellation propagation, transcript revert/preserve policy, concurrent tools; tool errors terminate | Retry, correction, fallback, circuit breaker, limits | Use transcript reversion for attempt atomicity; add retry policy, model-visible corrective failures, resource limits, indeterminate side-effect recovery, fallback and run policies. |
 | Workflow composition | Dynamic profiles, skills and agent patterns | Graphs, flows, handoffs, teams | Ordinary Swift control flow first; optional typed workflow/handoff layer only after real need. |
-| Observability | Transcript hooks, usage, Instruments | Spans, studios, telemetry exporters | Structured local run events and user-legible trace; optional telemetry export kept separate. |
+| Observability | Transcript hooks, usage, Instruments; response snapshots may coalesce executor events | Spans, studios, telemetry exporters | Capture lossless events at the executor/host boundary, then emit structured local run events and a user-legible trace; keep optional telemetry export separate. |
 | Evaluation | Foundation Models Evaluations | Datasets, trajectory assertions, replay | Cross-provider fixtures, scripted executors, fault injection, safety/effect assertions and native performance metrics. |
 | Integrations | Apple/system tools and provider packages | MCP, toolkits, plugins, RAG connectors | MCP/toolset/skill adapters and native macOS capabilities, with no required cloud control plane. |
 | Security | Framework guardrails and confirmation patterns | Auth scopes, policy middleware, sandboxes | Secret/data-egress policy, provenance, indirect-prompt-injection boundaries, least privilege and host-owned authorization. |

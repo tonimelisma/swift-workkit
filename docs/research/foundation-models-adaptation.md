@@ -2,8 +2,8 @@
 
 **Last verified: 2026-07-18.** Research into whether the macOS 27 Foundation Models
 APIs should replace or reshape the proposed Work Agent loop. Evidence comes from
-Apple's WWDC26 material and the public Swift interface shipped in Xcode 27.0 beta
-(`27A5194q`, macOS 27.0 SDK), inspected locally on 2026-07-18.
+Apple's WWDC26 material and the public Swift interfaces shipped in Xcode 27 beta 1
+(`27A5194q`) and beta 3 (`27A5218g`, macOS 27.0 SDK), inspected locally on 2026-07-18.
 
 This is decision input, not an accepted change to ADR-0006. It does challenge one of
 that ADR's premises: Work Agent no longer needs to wait for Anthropic or Google to ship
@@ -14,10 +14,11 @@ conform to Apple's public `LanguageModel`/`LanguageModelExecutor` protocols itse
 
 ## Recommendation
 
-**Aim at a hybrid, but do not adopt it on the currently installed seed.** The POC's
-Apple runtime gate fails before execution; ADR-0006 therefore remains the current
-decision. If a matching seed later passes the retained session-semantics gates, the
-best target is:
+**Recommend the hybrid. Every bounded architecture gate in this POC now passes.**
+The matching beta-3 SDK/runtime passes the real two-request Apple session/tool cycle;
+deterministic probes establish cancellation, retry, tool-error, concurrency,
+stream-observation and reconstructed model-switch behavior; and the two real executor
+conformances pass against all three live providers. The best target is:
 
 - Foundation Models supplies the in-memory model/session vocabulary and model/tool
   execution substrate on macOS 27: `LanguageModel`, `LanguageModelExecutor`,
@@ -34,12 +35,17 @@ best target is:
 - Work Agent tools keep their richer host contract and are bridged to Apple's `Tool`.
   Apple's tool protocol is the model-facing callable shape, not the policy boundary.
 
-Do not commit to that architecture solely from API inspection. Run one bounded POC
-before increment 4: **two executor implementations** (OpenAI-compatible and Anthropic)
+This conclusion is no longer based solely on API inspection. The bounded POC implements
+**two executor conformances** (OpenAI-compatible and Anthropic)
 tested against **three live providers** (DeepSeek, Google, and Anthropic). Each executor
 completes a streamed two-request tool cycle through `LanguageModelSession`; together
-the cases cover signed reasoning/metadata round-trip and a model switch. If the POC
-passes the gates below, update ADR-0006 before building the production loop.
+the cases cover signed reasoning/metadata round-trip and a model switch.
+
+Adoption would make macOS 27 an architectural minimum rather than an incidental project
+setting. PRODUCT.md deliberately leaves the minimum OS undecided, and Toni has not yet
+made that product decision. Therefore ADR-0006 remains the accepted implementation
+decision until Toni explicitly accepts macOS 27 and the hybrid; if he does, update the
+ADR and affected plans before increment 4 rather than building the old custom loop.
 
 ---
 
@@ -70,6 +76,9 @@ and the session/orchestration features in
 and [“Build agentic app experiences with the Foundation Models framework”](https://developer.apple.com/videos/play/wwdc2026/242/).
 The API summary is also in the official
 [Foundation Models updates](https://developer.apple.com/documentation/Updates/FoundationModels).
+Apple's [July 2026 release listing](https://developer.apple.com/news/releases/?id=03022026f)
+identifies Xcode 27 beta 3 as build `27A5218g` and macOS 27 beta 3 v2 as
+`26A5378n`; that is the pairing used for the passing rerun.
 
 The current project already has `MACOSX_DEPLOYMENT_TARGET = 27.0`, so the prototype
 has no immediate deployment-target obstacle. PRODUCT.md still lists minimum macOS as
@@ -216,7 +225,7 @@ reconciles provider-exclusive tools. That is product/runtime policy and remains 
 |---|---|---|---|---|
 | **A. Ignore Foundation Models** | Build ADR-0006 exactly as proposed | Maximum control; can target older macOS | Duplicates Apple's transcript, schema, session loop, token counting, typed output, dynamic context; isolates future model packages | **Not recommended** unless the POC exposes a blocker or minimum macOS drops below 27. |
 | **B. Add Apple as one provider** | Keep custom loop; wrap SystemLanguageModel/PCC behind `ChatProvider` | Lowest migration risk; adds Apple models | Gains almost none of the new neutral ecosystem; two transcript/tool systems remain | **Useful fallback**, not the best architecture. |
-| **C. Use Apple as session/model substrate** | Existing transports conform to `LanguageModelExecutor`; Apple transcript/session inside Work Agent's durable coordinator | Reuses native standards while retaining product control; future provider packages plug in | Requires a versioned transcript archive and proof that session error/tool semantics are sufficient | **Preferred target once a compatible runtime passes the harness.** |
+| **C. Use Apple as session/model substrate** | Existing transports conform to `LanguageModelExecutor`; Apple transcript/session inside Work Agent's durable coordinator | Reuses native standards while retaining product control; future provider packages plug in | Requires a versioned transcript archive and real executor conformance proof | **Preferred target.** Basic and deterministic semantics pass with explicit host-owned boundaries; live provider-through-session proof remains. |
 | **D. Make Foundation Models the whole runtime** | App stores Apple transcript and relies on session/profile for orchestration | Least custom code | A Codable transcript still does not provide durable checkpoints, restart-safe interrupts, effect policy, attempt identity, or Work Agent trace guarantees | **Reject.** It is an intelligence session, not the product's task runtime. |
 
 ---
@@ -478,15 +487,15 @@ hybrid to pass.
 
 ## POC results — 2026-07-18
 
-**Decision: do not adopt the Foundation Models session/executor substrate on the
-currently installed seed. ADR-0006 remains unchanged.** This is a completed no-adopt
-POC, not an ambiguous “promising” result. The architecture can be reconsidered after a
-matching macOS/Xcode seed runs the retained conformance harness.
+**Result: every bounded architecture gate passes. The remaining decision is product
+scope—whether Work Agent accepts macOS 27 as its minimum—not technical feasibility.**
+This is no longer
+an environment-blocked result: the exact SDK/runtime problem is understood and fixed.
 
-The package at `Experiments/FoundationModelsPOC/` now provides three distinct kinds of
+The package at `Experiments/FoundationModelsPOC/` now provides five distinct kinds of
 evidence:
 
-1. **Offline conformance.** Twelve Swift Testing cases pass. They cover a canonical
+1. **Offline conformance.** Nineteen Swift Testing cases pass. They cover a canonical
    Codable Apple `Transcript` archive, provider-metadata filtering on model switch,
    partial OpenAI tool arguments and usage, Google thought signatures, Anthropic block
    identity/thinking signatures/usage, precise malformed-stream errors, a real
@@ -505,25 +514,99 @@ evidence:
    expose.
 3. **Real Apple session surface.** A scripted `LanguageModel`,
    `LanguageModelExecutor`, `LanguageModelSession` and bridged Foundation Models `Tool`
-   two-request cycle compiles. The executable cannot reach `main`: the dynamic linker
-   exits 134 because the installed FoundationModels runtime lacks
-   `LanguageModelExecutorGenerationChannel.send`, while the Xcode SDK stub exports it.
-   The measured combination is macOS 27.0 `26A5378n`, system FoundationModels build
-   `26A5377s`, and Xcode 27.0 `27A5194q`. API keys cannot affect a pre-main loader
-   failure.
+   two-request cycle passes on macOS 27 beta 3 v2 `26A5378n` with Xcode 27 beta 3
+   `27A5218g`. It records two requests, one tool call and output, one reasoning entry,
+   reasoning-signature replay, canonical transcript archive replay, and 48 total
+   tokens. The original failure paired Xcode beta 1 `27A5194q` with the beta-3 OS:
+   beta 1 compiled a call to generic `send<T: Event>(T)`, while the OS exports concrete
+   `send(Event)`. These are distinct Swift ABI symbols. Updating Xcode and rebuilding
+   fixed it.
 
-The direct provider passes prove credentials and provider adapters are available; they
-do not turn the Apple architecture gate green. Cancellation propagation, partial-stream
-retry atomicity, recoverable tool correction, concurrent tool scheduling and live
-model switching through `LanguageModelSession` remain unexecutable until the runtime
-matches the SDK. Those are critical session-semantics gates, so adoption would be an
-unsupported bet.
+   The exact evidence, read from the beta-1 SDK `.tbd` and the system dyld shared
+   cache, was:
 
-The experiment currently contains 928 lines of non-test Swift and a 75-line live probe
-script. It reuses the production providers' verified wire assumptions but no production
-source file; the parsers and scripted executor are isolated POC code. Because the Apple
-cycle cannot load, there is no honest measured claim yet that Foundation Models removes
-more loop code than its adapter and archival boundary adds.
+   - beta-1 SDK: `_$s16FoundationModels38LanguageModelExecutorGenerationChannelV4sendyyxYaAC5EventRzlF`
+   - beta-3 runtime: `_$s16FoundationModels38LanguageModelExecutorGenerationChannelV4sendyyAC5EventVYaF`
+
+   Xcode beta 3 exposes the concrete `Event` API and compiles against the runtime
+   symbol. The compiler then surfaced the normal source migration from typed event
+   structs to `LanguageModelExecutorGenerationChannel.Event`; after that migration,
+   the executable passed.
+
+4. **Deterministic session semantics.** Scripted executors and tools establish the
+   behavior instead of inferring it from interfaces:
+
+   - cancellation reaches a blocked executor as `CancellationError`;
+   - cancellation reaches a blocked tool, while the session surface wraps that
+     cancellation in `LanguageModelSession.ToolCallError`;
+   - `.revertTranscript` discards a partial failed response, allowing an app-controlled
+     retry to commit exactly one recovered response; the session does not supply retry
+     policy itself;
+   - a thrown tool error terminates the response as `ToolCallError` and does not become
+     corrective tool output visible to the model, so Work Agent's tool bridge must
+     classify and encode recoverable failures;
+   - two tool calls execute concurrently even when the second completes first, while
+     transcript outputs commit in provider source order; Work Agent still needs a
+     resource-aware concurrency limiter because the session starts both;
+   - a reconstructed session receives the filtered transcript on a provider switch,
+     with the foreign reasoning signature and metadata absent; and
+   - response snapshots include final text and usage but can coalesce individual
+     executor events even across a deliberate delay. Lossless live trace/UI events
+     must therefore be captured at the executor channel or app-owned hooks, not
+     reconstructed from response snapshots.
+
+5. **Live Apple executor/session integration.** The POC's
+   `OpenAICompatibleLiveExecutor` and `AnthropicLiveExecutor` translate Apple's
+   `LanguageModelExecutorGenerationRequest`, stream provider events into Apple's typed
+   generation channel, replay provider-owned reasoning/signatures, and translate the
+   second request back to each wire format. Through `LanguageModelSession`, all three
+   live cases complete one tool call and output followed by a final response:
+
+   | Provider | Tool cycle | Provider state | Final response | Session tokens in run |
+   |---|---|---|---|---:|
+   | DeepSeek `deepseek-v4-pro` | Pass | Pass | Pass | 1,285 |
+   | Google `gemini-3.5-flash` | Pass | Pass | Pass | 540 |
+   | Anthropic `claude-sonnet-5` | Pass | Pass | Pass | 2,130 |
+
+   A separate live DeepSeek-to-Anthropic reconstruction also passes: the source tool
+   task completes, `TranscriptArchive.replay(to:)` removes DeepSeek-owned state, and
+   Anthropic produces the next response from the reconstructed Apple session.
+
+The direct transport script remains useful because it isolates provider drift from
+Apple-session behavior; the live executor probes now prove the combined path. Dynamic
+profile switching, image/custom segments, and a larger planned-tool/MCP schema corpus
+remain completeness work for implementation, not blockers to the architecture choice.
+
+The experiment currently contains 1,758 lines of non-test Swift and an 83-line direct
+live probe script. The live executor implementation is 543 lines of deliberately
+explicit POC code. It reuses production providers' verified wire assumptions but no
+production source file, so it proves feasibility rather than a final production code
+delta. Implementation should refactor the shipped parsers and request encoders into
+the executor conformances instead of maintaining the POC copies in parallel.
+
+### Coverage boundary: comprehensive for the decision, not exhaustive for the framework
+
+The POC is comprehensive for the provider-extensible agent-loop decision: it exercises
+the exact Apple types Work Agent would put on its critical path, both wire formats,
+three live providers, provider-state replay and switching, the model/tool/model cycle,
+cancellation, partial failure, tool failure, parallel tools, response observation,
+usage, archival and the strict dynamic-schema boundary.
+
+It is **not** an exhaustive test of every Foundation Models API. The following surfaces
+remain untested because they are implementation follow-ups or outside this decision:
+
+| Surface | Status | Why it is not an architecture blocker |
+|---|---|---|
+| Dynamic profiles, `historyTransform`, lifecycle hooks and session properties | API inspected; not executed | Valuable context/trace ergonomics. The app can reconstruct sessions and observe executors without them. Test before relying on each hook's ordering. |
+| `Generable` structured final outputs beyond tool arguments | Compile-time surface linked; no live output matrix | Add conformance tests when a product feature introduces typed final output. |
+| Images, attachments and custom transcript segments | Not executed | Current agent-loop increment is text/tool work. Each new modality needs provider-specific contract tests. |
+| Exact token-count APIs, prewarming, on-device and PCC models | Usage events tested; other paths not executed | They optimize or add models; they do not change the executor/session ownership boundary. |
+| Foundation Models Evaluations and Instruments integration | Researched, not executed | Work Agent still needs provider-neutral trajectory/effect evals and local trace truth. Add Apple exporters as integrations. |
+| Refusal, guardrail, context-window and concurrent-session error variants | Interface inspected; no fault matrix | Production adapters need typed error fixtures before shipping, but the coordinator already owns recovery and presentation. |
+| Every JSON Schema/MCP dialect feature | Strict representative subset measured | Unsupported keywords fail with path/keyword instead of being lost. Expand against the actual planned-tool and MCP corpus during implementation. |
+
+Calling this “the whole Apple framework is exhaustively tested” would be false. Calling
+the hybrid technically feasible and evidence-backed for Work Agent's loop is justified.
 
 ### Schema compatibility measured by the POC
 
@@ -543,12 +626,10 @@ more loop code than its adapter and archival boundary adds.
 ### Reproduction and cleanup decision
 
 The package README contains the exact offline, Apple-session and live-provider
-commands. The experiment remains in the repository as a conformance harness because a
-matching OS seed can convert the pre-main blocker into direct session evidence without
-redoing the adapter, tool, transcript or schema work. If that later run passes all
-critical session gates, fold its fixtures and scripted executor utilities into the
-production test strategy while implementing the hybrid. If it fails semantically,
-retain the minimal failing fixture and remove unused prototype code.
+commands. The experiment remains in the repository as a conformance harness for API
+and provider drift. If Toni accepts the hybrid, fold its fixtures, scripted semantics
+tests and live executor matrix into the production test strategy. Do not leave a second
+independent set of provider adapters after implementation.
 
 ### Explicitly out of scope
 
@@ -563,7 +644,7 @@ retain the minimal failing fixture and remove unused prototype code.
 
 ---
 
-## Specific plan changes after a compatible runtime passes
+## Specific plan changes if the hybrid is accepted
 
 These would require Toni's explicit decision and an ADR-0006 update in the same doc
 increment; they are not applied by this research.
@@ -622,12 +703,11 @@ They do **not** cover the hard Work Agent concern: a trustworthy, durable task t
 act on a person's Mac, stop for them, survive failure, switch providers, preserve every
 trace, and recover without duplicating consequences.
 
-If a matching runtime passes the retained session gates, the architectural center
-should move one layer up:
+The retained live-executor gate passes, so the architectural center should move one layer up:
 
 > Use Foundation Models for intelligence sessions. Build Work Agent for durable work.
 
-The current seed failed before execution, so Work Agent should retain the custom loop
-decision now. Re-run the harness after installing a matching seed; update ADR-0006 only
-if session cancellation, retry, correction, concurrency and model-switch semantics
-also pass—not merely because the binary loads.
+The matching seed executes the loop, the deterministic semantics are measured, all
+three live providers pass through Apple executors, and cross-provider reconstruction
+succeeds. The only remaining adoption gate is Toni's explicit minimum-macOS/product
+decision; the technical POC supports revising ADR-0006 to the hybrid.

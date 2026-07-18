@@ -62,7 +62,7 @@ func transcriptArchiveRoundTrips() throws {
 }
 
 @available(macOS 27.0, *)
-@Test("Provider switching strips only foreign metadata")
+@Test("Provider switching strips foreign metadata and typed reasoning signatures")
 func transcriptArchiveStripsForeignProviderMetadata() throws {
     let transcript = Transcript(entries: [
         .reasoning(
@@ -70,7 +70,9 @@ func transcriptArchiveStripsForeignProviderMetadata() throws {
                 id: "reasoning-1",
                 metadata: [
                     "deepseek.reasoning_content": "x",
+                    "google.thought_signature": "signature",
                     "neutral.id": "1",
+                    TranscriptArchive.signatureProviderMetadataKey: "google",
                     "anthropic.signature": "y",
                 ],
                 segments: [.text(.init(content: "reasoning"))],
@@ -79,13 +81,24 @@ func transcriptArchiveStripsForeignProviderMetadata() throws {
         ),
     ])
 
-    let replayed = try TranscriptArchive(transcript: transcript).replay(for: "anthropic")
+    let archive = TranscriptArchive(transcript: transcript)
+    let replayed = try archive.replay(to: "anthropic")
     guard case let .reasoning(reasoning) = replayed.transcript[0] else {
         Issue.record("Expected a reasoning entry")
         return
     }
     #expect(Set(reasoning.metadata.keys) == Set(["neutral.id", "anthropic.signature"]))
-    #expect(reasoning.signature == Data("signature".utf8))
+    #expect(reasoning.signature == nil)
+
+    let sameProvider = try archive.replay(to: "google")
+    guard case let .reasoning(sameProviderReasoning) = sameProvider.transcript[0] else {
+        Issue.record("Expected a reasoning entry")
+        return
+    }
+    #expect(sameProviderReasoning.signature == Data("signature".utf8))
+    #expect(Set(sameProviderReasoning.metadata.keys) == Set([
+        "neutral.id", "neutral.signature_provider", "google.thought_signature",
+    ]))
 }
 
 @Test("OpenAI-compatible fixtures preserve partial tool arguments and usage")
@@ -177,6 +190,12 @@ func schemaBridgeRejectsLossySchemas() {
     }
     #expect(throws: SchemaBridgeError.unsupported(keyword: "description", path: "$")) {
         try SchemaBridge.parse(["type": "string", "description": "Must not be discarded"])
+    }
+    #expect(throws: SchemaBridgeError.unsupported(keyword: "enum", path: "$")) {
+        try SchemaBridge.parse(["type": "integer", "enum": [1, 2]])
+    }
+    #expect(throws: SchemaBridgeError.unsupported(keyword: "items", path: "$")) {
+        try SchemaBridge.parse(["type": "boolean", "items": ["type": "string"]])
     }
 }
 

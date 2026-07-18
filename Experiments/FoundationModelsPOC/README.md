@@ -12,7 +12,7 @@ swift test --package-path Experiments/FoundationModelsPOC
 swift run --package-path Experiments/FoundationModelsPOC foundation-models-probe all
 ```
 
-The first command runs 12 Swift Testing cases. The second replays representative,
+The first command runs 19 Swift Testing cases. The second replays representative,
 credential-free provider stream fixtures and prints a structural pass/fail matrix.
 Run one fixture case with `deepseek`, `google`, or `anthropic` instead of `all`.
 
@@ -31,15 +31,23 @@ swift run --package-path Experiments/FoundationModelsPOC \
   --fixture-root Experiments/FoundationModelsPOC/Tests/FoundationModelsPOCTests/Fixtures
 ```
 
-It is separate from the offline target because the current machine cannot load it.
-On macOS 27 build `26A5378n` with FoundationModels framework build `26A5377s`, the
-binary exits at dynamic linking with a missing
-`LanguageModelExecutorGenerationChannel.send` symbol. Xcode 27 build `27A5194q` and
-its SDK stub do export that symbol. This is a measured SDK/runtime seed mismatch.
+This gate passes on macOS 27 beta 3 v2 (`26A5378n`) with Xcode 27 beta 3
+(`27A5218g`). It reports two model requests, one bridged tool call/output, reasoning
+and signature entries, canonical transcript archive replay, and usage.
 
-Re-run this command after installing a matching macOS seed. A successful result will
-report two model requests, one bridged tool call/output, reasoning and signature
-entries, canonical transcript archive replay, and usage.
+The earlier loader failure was caused by Xcode 27 beta 1 (`27A5194q`) being used with
+the beta-3 OS. Beta 1 declared a generic `send<T: Event>(T)` ABI symbol while the
+beta-3 runtime exports the concrete `send(Event)` symbol. Updating Xcode and rebuilding
+against its beta-3 SDK fixed the incompatibility; no POC or provider workaround was
+required.
+
+The offline suite also measures the decision-critical session semantics with scripted
+executors and tools. It proves provider- and tool-task cancellation propagation,
+application-controlled atomic retry through `.revertTranscript`, concurrent tool
+execution with source-order transcript commits, cross-provider reconstruction, and
+usage snapshots. It also records two boundaries Work Agent must own: tool failures are
+surfaced as terminal `ToolCallError` values rather than model-visible correction
+output, and session response snapshots may coalesce individual executor events.
 
 ## Credentials and live providers
 
@@ -58,5 +66,21 @@ booleans and HTTP statuses. It never prints or persists a credential. Anthropic'
 current `claude-sonnet-5` API uses adaptive thinking with maximum effort; the older
 `thinking.type: enabled` request is now rejected.
 
-These direct calls do not pass through Apple's executor/session API and therefore are
-supporting transport evidence rather than a passing Apple architecture gate.
+Those direct calls remain a transport-isolation diagnostic. The architecture gate now
+also passes through the Swift executable's real Apple executor conformances. After
+exporting the same `.env` values into the process environment, run:
+
+```sh
+swift run --package-path Experiments/FoundationModelsPOC \
+  foundation-models-session-probe --live-provider deepseek \
+  --fixture-root Experiments/FoundationModelsPOC/Tests/FoundationModelsPOCTests/Fixtures
+# Replace deepseek with google or anthropic.
+
+swift run --package-path Experiments/FoundationModelsPOC \
+  foundation-models-session-probe --live-switch deepseek anthropic \
+  --fixture-root Experiments/FoundationModelsPOC/Tests/FoundationModelsPOCTests/Fixtures
+```
+
+All three live provider/session cycles pass. The switch probe also passes: DeepSeek
+completes the tool task, its foreign state is filtered from the replay archive, and
+Anthropic continues the reconstructed session. No command prints a credential.

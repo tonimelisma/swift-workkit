@@ -17,15 +17,25 @@ The app runs, streams chat from real providers, and stores keys in the Keychain.
 increment 2:
 
 An isolated `Experiments/FoundationModelsPOC/` Swift package also exists. It links the
-macOS 27 Foundation Models provider surface and has 12 offline tests for Apple
+macOS 27 Foundation Models provider surface and has 19 offline tests for Apple
 `Transcript` archival, provider stream parsing, strict schema conversion, a bridged
-Foundation Models tool, trace budgeting, metadata filtering, and fixture path safety.
+Foundation Models tool, trace budgeting, metadata filtering, fixture path safety, and
+scripted session semantics. The semantics tests measure executor/tool cancellation,
+attempt-atomic retry through transcript reversion, terminal tool errors, concurrent
+tool scheduling with source-order commits, coalesced response snapshots, and
+cross-provider session reconstruction.
 Its secret-safe live script has completed direct two-request tool cycles against
-DeepSeek, Google, and Anthropic using the repository-root `.env`. A real scripted
-`LanguageModelExecutor`/`LanguageModelSession` cycle compiles but cannot reach `main` on
-the current machine because the system FoundationModels framework lacks a channel
-symbol exported by the Xcode 27 SDK. The experiment is not production target membership
-and the failed runtime gate leaves ADR-0006 unchanged.
+DeepSeek, Google, and Anthropic using the repository-root `.env`. Real
+`OpenAICompatibleLiveExecutor` and `AnthropicLiveExecutor` conformances also complete
+the same streamed two-request cycles through `LanguageModelSession` for all three
+providers, and a DeepSeek-to-Anthropic reconstructed-session switch passes after
+foreign metadata removal. A scripted
+`LanguageModelExecutor`/`LanguageModelSession` cycle also passes with Xcode 27 beta 3:
+two model requests, one bridged tool call/output, reasoning signature, transcript
+archive replay, and usage. The earlier loader failure was an Xcode beta-1 SDK versus
+macOS beta-3 runtime ABI mismatch. The experiment is not production target membership
+and has not changed ADR-0006; changing the accepted runtime decision and making macOS
+27 a real minimum still require Toni's explicit decision.
 
 ```
 Work Agent/
