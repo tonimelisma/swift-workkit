@@ -14,11 +14,13 @@ testable: *The system shall…* (always), *While/When/Where/If…* (conditional)
 `FR` = functional, `NFR` = non-functional. **IDs are permanent and never reused.**
 A dropped requirement is deleted from this doc — no tombstones — and git history is
 the archive. So a number is never handed out twice, the next free IDs are tracked
-here: **next FR: FR-068 · next NFR: NFR-009.**
+here: **next FR: FR-071 · next NFR: NFR-009.**
 
 **Status:** `Specified` (agreed, not built) · `Implemented` (built, tested, traced).
 
-Everything is `Specified`. The codebase is an Xcode template.
+As of increment 2 the app runs and streams chat: FR-068 and FR-070 are `Implemented`,
+and the provider/settings requirements are satisfied in code (see
+[ENGINEERING.md](../engineering/ENGINEERING.md)). The rest is `Specified`.
 
 ---
 
@@ -45,11 +47,12 @@ capability because a competitor lacks it.
 
 | ID | Requirement | Traces to | Status |
 |---|---|---|---|
-| **FR-050** | The system shall allow the user to configure one or more model providers. | "the user can add one or more LLM providers" | Specified |
+| **FR-050** | The system shall allow the user to configure one or more model providers, each by its API key. | "the user can add one or more LLM providers" | Specified |
+| **FR-069** | The system shall let the user add a provider by pasting its API key, and remove it. | "add and remove providers by API key" | Specified |
 | **FR-051** | The system shall present available providers and models from a registry rather than requiring the user to type identifiers. (ADR-0005) | "we should have a register of them… can we use a ready registry" | Specified |
 | **FR-061** | The system shall offer only an explicit curated set of models, and shall not present any other model. | "those are the only ones shown in the menu" | Specified |
 | **FR-062** | The system shall offer only first-party providers, and shall not present resellers or aggregators. | "let's start with 1P access for now, no resellers for now" | Specified |
-| **FR-055** | The system shall allow the user to designate which configured provider and model is used. | implied by "one or more providers" | Specified |
+| **FR-055** | The system shall allow the user to designate which configured provider and model is used, chosen in the chat rather than in settings. | implied by "one or more providers" | Specified |
 | **FR-057** | The system shall allow the user to remove a configured provider, and shall delete its stored credential when they do. | inferred — standard practice | Specified |
 | **FR-052** | The system shall store provider credentials in the macOS Keychain, and shall not write them to preferences, logs, or application state. | inferred — standard practice | Specified |
 | **FR-067** | Where a provider is OpenAI, the system shall support both an API key and subscription-based sign-in. | "for GPT, we should support both API key as well as subscription" | Specified — see caveat |
@@ -120,6 +123,19 @@ against an OpenAI-compatible endpoint, so it needs no bespoke adapter.
 work as outcomes rather than tool calls. Toni wants the machinery visible — made
 friendly, not hidden. FR-063 keeps raw detail regardless of display, so turning reasoning
 off (FR-066) is a display choice and never a data loss.
+
+## Chat
+
+| ID | Requirement | Traces to | Status |
+|---|---|---|---|
+| **FR-068** | The main window shall present a chat interface with message history above a text input at the bottom. | "chat box at the bottom with messages scrolling above as the main window" | Implemented |
+| **FR-070** | When the user sends a message, the system shall send the conversation to the selected model and stream the reply. | "chat box … that talks to the model" | Implemented |
+
+**On "Implemented".** FR-068 and FR-070 are the first requirements to reach `Implemented`
+— built, traced (`rg FR-068`, `rg FR-070`), unit-tested, and exercised live against five
+real providers. FR-050/051/052/054/055/056/057/061/062/063/065/066/069, NFR-007/008 are
+implemented alongside them but keep `Specified` where only part of the requirement is
+exercised this increment (e.g. tool calls in FR-065 don't exist yet — only reasoning).
 
 ## Non-functional
 
