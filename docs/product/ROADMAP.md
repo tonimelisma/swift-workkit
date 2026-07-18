@@ -40,22 +40,33 @@ trusted.
 
 ## Increment 2 — Settings: add your LLM providers
 
-First code increment. Worktree, PR.
+First code increment. Worktree, PR. **Not started — awaiting DOR go-ahead.**
 
-An idiomatic macOS Settings scene where the user configures one or more cloud
-providers: pick a provider and model from the models.dev registry (ADR-0005), paste a
-key, have it verified, choose the active one.
+An idiomatic macOS Settings scene: a simple list of configured providers. Add one, paste
+an API key, have it verified, pick which is active. Nothing else.
 
-Deliberately ahead of the runtime research. The settings surface doesn't depend on how
-the agent loop works, and building it first means the app is real from increment 2
-rather than increment 4.
+FR-050, FR-051, FR-052, FR-054, FR-055, FR-056, FR-057, FR-061, FR-062, NFR-007, NFR-008.
 
-FR-050 through FR-057, NFR-007, NFR-008. Keys in Keychain, never in preferences.
-Registry bundled and refreshed, never blocking launch.
+### Scope: all eleven providers
 
-**Done when:** a real key is stored, verified against a live provider, and survives
-relaunch; the app works with the network down; and no credential appears in
-preferences or logs.
+*"start with all of the ones I said."* The full curated set in REQUIREMENTS.md ships in
+this increment — eleven first-party providers, sixteen models.
+
+A two-provider start was proposed and rejected. Recording why it's not a problem: of the
+eleven, only `anthropic` and `google` need bespoke request shapes. The other nine are
+OpenAI-compatible — `thinkingmachines`, for instance, is literally `TINKER_API_KEY`
+against an OpenAI-compatible endpoint. So eleven providers is roughly three auth styles
+and three request shapes, not eleven of anything.
+
+The risk that remains is real but bounded: **verifying eleven providers live needs
+eleven accounts with credit.** Any we can't test is a provider we're shipping on faith.
+That is a testing problem to name, not a reason to cut the list.
+
+**Done when:** a real key is stored and verified live for every provider we have an
+account for, and survives relaunch; the app is fully usable with the network down; no
+credential appears in preferences or logs; the menu shows only the curated sixteen; and
+any provider that could not be verified against a live account is named in the DOD
+rather than quietly assumed to work.
 
 ## Increment 3 — Runtime and neutrality research → ADR-0006
 
