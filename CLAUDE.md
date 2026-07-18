@@ -243,9 +243,9 @@ wrong destroys the value of every other line.
 
 ## Conventions
 
-- Swift, SwiftUI, `swift-testing`. One app target plus one native Swift agent-runtime
-  SPM package over macOS 27 Foundation Models. No other packages are introduced until
-  a concrete seam earns them. See ADR-0002 and ADR-0006.
+- Swift, SwiftUI, `swift-testing`. One macOS app target plus one native Swift
+  agent-runtime SPM package supporting iOS 27 and macOS 27 Foundation Models. No other
+  packages are introduced until a concrete seam earns them. See ADR-0002 and ADR-0006.
 - **Never add UI tests.** The project has no UI-test target and will not gain one;
   acceptance is verified by running the app, while automated coverage stays unit and
   contract-level.

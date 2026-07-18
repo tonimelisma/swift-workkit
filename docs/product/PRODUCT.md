@@ -135,7 +135,8 @@ Explicit, so they don't get smuggled in:
 - Mac App Store distribution — see ADR-0003.
 - **Locally-hosted models. Ever.** "no local models ever."
 - **Resellers and aggregators** — first-party providers only, for now.
-- Mobile or web companion.
+- A mobile or web Work Agent companion. The reusable agent-runtime SPM package supports
+  iOS 27 for other native apps; that does not put an iPhone Work Agent app in scope.
 
 ---
 

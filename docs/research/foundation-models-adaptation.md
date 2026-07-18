@@ -83,6 +83,27 @@ The current project already has `MACOSX_DEPLOYMENT_TARGET = 27.0`, so the protot
 has no deployment-target obstacle. NFR-009 makes that existing setting the accepted
 architectural minimum rather than an incidental template value.
 
+### Platform and model coverage
+
+The accepted SPM target is broader than the Work Agent product target. Work Agent
+remains a macOS app, while the runtime package supports iOS 27 and macOS 27. Apple's
+[`LanguageModelExecutor`](https://developer.apple.com/documentation/foundationmodels/languagemodelexecutor)
+is explicitly the bridge to either a server API or a local inference engine, so the
+runtime must accept any injected `LanguageModel` rather than branch on “cloud” versus
+“local.” Apple's
+[`SystemLanguageModel`](https://developer.apple.com/documentation/foundationmodels/systemlanguagemodel)
+provides the on-device Apple Intelligence model; Apple also identifies Private Cloud
+Compute, Core AI, MLX and provider/community packages as participants in the same
+protocol family.
+
+This does not make arbitrary model files work automatically. A model needs a
+`LanguageModel`/`LanguageModelExecutor` conformance that translates transcript,
+generation options and streamed events. Apple's system model also requires an eligible
+device, Apple Intelligence enabled and model assets available, so hosts must check
+availability and provide a fallback. The current POC has executed on macOS only; iOS
+compilation and eligible-iPhone execution belong to the production package conformance
+matrix before claiming iPhone support.
+
 ---
 
 ## Direct type mapping
@@ -234,7 +255,7 @@ reconciles provider-exclusive tools. That is product/runtime policy and remains 
 Work Agent app
   UI / credentials / catalog / app task storage / native tool implementations
     ↓
-Native Swift agent-runtime SPM package
+Native Swift agent-runtime SPM package (iOS 27 + macOS 27)
   TaskCoordinator / RunPolicy / checkpoint / interrupt / failover / trace
   RunJournal (append-only execution truth)
   TranscriptArchive (versioned wrapper around Codable Apple Transcript)

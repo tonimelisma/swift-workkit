@@ -593,8 +593,10 @@ The accepted middle-layer SPM package should aim to:
 - build on Apple Foundation Models types and session substrate where the conformance
   harness proves them, while keeping the durable runtime independently testable;
 - keep UI, provider catalog curation, credentials, built-in tool policy, and app task
-  storage outside the package; and
-- remain useful without MCP, a cloud account, a deployment server, or a graph DSL.
+  storage outside the package;
+- remain useful without MCP, a cloud account, a deployment server, or a graph DSL; and
+- support iOS 27 and macOS 27 from one UI-independent core and treat cloud versus
+  on-device execution as a `LanguageModel` choice rather than a separate runtime.
 
 ### Recommended non-objectives
 

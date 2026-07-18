@@ -28,6 +28,10 @@ Toni then confirmed the product and packaging decision: "we'll have three layers
 Work Agent app, the Swift agentic framework which will be an SPM, and Apple's new macOS
 27 APIs." This also resolves the minimum OS at macOS 27 (NFR-009).
 
+Toni subsequently confirmed the package's model and platform boundary: it must work
+with cloud APIs and compatible on-device models on iPhone or Mac. The Work Agent app
+remains macOS-only; the reusable package supports iOS 27 and macOS 27 (NFR-010).
+
 ## Decision
 
 Use three layers with one-way dependencies:
@@ -35,18 +39,26 @@ Use three layers with one-way dependencies:
 1. **Work Agent app.** SwiftUI/Observation presentation, curated models, Keychain and
    credentials, app task storage, user-facing error/approval policy, built-in Mac tool
    implementations and product-specific integrations.
-2. **Native Swift agent-runtime SPM package.** Durable task coordination around Apple
-   sessions: run journal and checkpoints, serializable interrupts, retry/failover/run
-   policy, provider executors, richer host tool contracts, effect and idempotency
-   metadata, resource scheduling, context assembly, trace events, replay and eval
-   support. The package imports Foundation Models but never the app target or SwiftUI.
-3. **macOS 27 Foundation Models.** The model/executor/session vocabulary, canonical
+2. **Native Swift agent-runtime SPM package for iOS 27 and macOS 27.** Durable task
+   coordination around Apple sessions: run journal and checkpoints, serializable
+   interrupts, retry/failover/run policy, provider executors, richer host tool
+   contracts, effect and idempotency metadata, resource scheduling, context assembly,
+   trace events, replay and eval support. The package accepts any injected
+   `LanguageModel` and imports Foundation Models but never the app target or SwiftUI.
+3. **iOS/macOS 27 Foundation Models.** The model/executor/session vocabulary, canonical
    `Transcript`, model/tool/model cycle, typed tools and generation schemas, dynamic
    profiles, token/usage facilities and platform evaluation/instrumentation hooks.
 
 The two shipped provider transports become `LanguageModelExecutor` implementations for
 the OpenAI-compatible and Anthropic wire formats. They remain usable for the eleven
 curated providers without waiting for vendor-supplied Swift packages.
+
+The same runtime accepts Apple's on-device `SystemLanguageModel`, Private Cloud
+Compute, Core AI, MLX and community/provider models when they conform to
+`LanguageModel`. A raw model implementation is not automatically supported; it needs a
+`LanguageModel`/`LanguageModelExecutor` adapter. On-device availability is checked at
+runtime because eligible hardware, enabled Apple Intelligence and installed assets are
+device conditions rather than framework guarantees.
 
 The package preserves Foundation Models types at its public intelligence-session seams.
 It does **not** introduce shadow `AgentMessage`, `AgentTranscript`, `AgentSchema` or a
@@ -92,9 +104,10 @@ packages can plug into the same substrate, and Work Agent's code focuses on dura
 observable, side-effect-safe work. The SPM boundary enforces that the reusable runtime
 cannot import app UI, credentials or product storage.
 
-**Bad.** Work Agent requires macOS 27. The package must track beta changes, maintain the
-two wire executors until provider packages cover the curated set, and make durable
-semantics precise enough to deserve a public framework boundary in increment 4.
+**Bad.** Work Agent requires macOS 27. The package must track beta changes across iOS
+and macOS, maintain the two wire executors until provider packages cover the curated
+set, and make durable semantics precise enough to deserve a public framework boundary
+in increment 4.
 
 **Bounded.** Foundation Models response snapshots are presentation conveniences, not a
 lossless trace source; executor and host boundaries remain trace truth. Unsupported JSON
@@ -116,4 +129,6 @@ The decision is backed by the reproducible package in
 
 The POC remains a conformance harness until increment 4 migrates its proven pieces into
 the production SPM package. Exact evidence and remaining non-blocking API coverage are
-in [foundation-models-adaptation.md](../research/foundation-models-adaptation.md).
+in [foundation-models-adaptation.md](../research/foundation-models-adaptation.md). The
+POC has executed on macOS; iOS compilation and eligible-device on-device execution are
+increment-4 gates, not results claimed by the current experiment.

@@ -35,7 +35,9 @@ two model requests, one bridged tool call/output, reasoning signature, transcrip
 archive replay, and usage. The earlier loader failure was an Xcode beta-1 SDK versus
 macOS beta-3 runtime ABI mismatch. The experiment is not production target membership
 and is not the production runtime package. ADR-0006 now accepts its proven architecture:
-macOS 27 Foundation Models under a native Swift SPM runtime under the Work Agent app.
+iOS/macOS 27 Foundation Models under a native Swift SPM runtime under the macOS Work
+Agent app. The POC itself currently targets and has executed only on macOS; iOS support
+is an accepted package objective, not implemented reality yet.
 
 ```
 Work Agent/
@@ -71,12 +73,13 @@ docs/                            specs
 | Language | Swift, MainActor-default isolation | Native macOS is the point |
 | UI | SwiftUI (`@Observable`) | — |
 | Tests | swift-testing | ADR-0004 |
-| Structure | Single app target today; one agent-runtime SPM package is the next accepted boundary | ADR-0002, ADR-0006 |
+| Structure | Single macOS app target today; one iOS/macOS agent-runtime SPM package is the next accepted boundary | ADR-0002, ADR-0006 |
 | Distribution | Developer ID, notarized; **App Sandbox off**, Hardened Runtime on | ADR-0003 |
 | Provider chat | Two adapters behind `ChatProvider` | ADR-0007 |
 | Model registry | models.dev, bundled + refreshed | ADR-0005 |
 | Agent runtime (tools/loop) | Foundation Models intelligence session inside a Work Agent-owned durable Swift runtime | ADR-0006 |
 | Min macOS | **27.0** | NFR-009, ADR-0006 |
+| Runtime package platforms | **iOS 27 and macOS 27**; not implemented yet | NFR-010, ADR-0006 |
 
 **App Sandbox is off.** The Xcode template enabled it; it blocked all outbound network,
 which is fatal for an app whose whole job is calling provider APIs. Disabling it realizes

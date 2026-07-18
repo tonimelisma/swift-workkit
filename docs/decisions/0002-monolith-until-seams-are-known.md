@@ -30,10 +30,11 @@ native Swift agent runtime described by ADR-0006. Its boundary is now evidenced 
 than guessed: it has an independent conformance harness, a platform substrate, a clear
 dependency direction, and a reusable developer-facing purpose distinct from the app.
 
-The resulting dependency direction is Work Agent app → Swift agent-runtime package →
-macOS 27 Foundation Models. App UI, credentials, catalog, task storage and product tool
-policy remain outside the package. No other SPM package is created until a specific
-seam demonstrably hurts through slow builds, a real testability problem or actual reuse.
+The resulting dependency direction is Work Agent app → cross-platform Swift
+agent-runtime package → iOS/macOS 27 Foundation Models. App UI, credentials, catalog,
+task storage and product tool policy remain outside the package. No other SPM package
+is created until a specific seam demonstrably hurts through slow builds, a real
+testability problem or actual reuse.
 
 "It hurts" means something happened. Not that it might.
 

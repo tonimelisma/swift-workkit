@@ -11,8 +11,9 @@ those intelligence-session abstractions. This revision deletes that duplication 
 moves Work Agent's design one layer up to durable work.
 
 No new task behavior is invented here. Existing constraints are FR-001, FR-006,
-FR-060, FR-063–066, NFR-001, NFR-002, NFR-006 and NFR-009. The increment-4 DOR must
-create any task-specific requirements from Toni's answers to the open questions below.
+FR-060, FR-063–066, NFR-001, NFR-002, NFR-006, NFR-009 and NFR-010. The increment-4
+DOR must create any task-specific requirements from Toni's answers to the open
+questions below.
 
 ---
 
@@ -28,7 +29,7 @@ Work Agent app
   built-in Mac tools and product authorization policy
              │ imports and injects dependencies into
              ▼
-Native Swift agent-runtime SPM package
+Native Swift agent-runtime SPM package (iOS 27 + macOS 27)
   TaskCoordinator and RunPolicy
   RunJournal / checkpoints / interrupts
   TranscriptArchive and context assembly
@@ -37,7 +38,7 @@ Native Swift agent-runtime SPM package
   trace events, replay, fixtures and eval support
              │ imports and extends
              ▼
-macOS 27 Foundation Models
+iOS/macOS 27 Foundation Models
   LanguageModel / LanguageModelExecutor
   LanguageModelSession / Transcript
   Tool / Generable / GenerationSchema
@@ -54,8 +55,9 @@ that name becomes public API and repository structure.
 
 ## 2. Package boundary
 
-Create one local SPM package with a macOS 27 deployment target. Its public surface is
-UI-independent and strict-concurrency clean.
+Create one local SPM package with iOS 27 and macOS 27 deployment targets. Its public
+surface is platform-neutral, UI-independent and strict-concurrency clean. The Work
+Agent application remains macOS-only.
 
 The package owns:
 
@@ -70,6 +72,12 @@ The package owns:
 - structured local runtime events and optional exporter protocols; and
 - cross-provider replay/evaluation helpers.
 
+The package accepts any injected `LanguageModel`. Cloud APIs participate through the
+OpenAI-compatible and Anthropic executors or another provider package. On-device
+`SystemLanguageModel`, Private Cloud Compute, Core AI, MLX and community models
+participate through their Foundation Models conformances. Raw model engines require an
+adapter; the runtime does not infer how to invoke an arbitrary model binary.
+
 The app owns:
 
 - SwiftUI/Observation views and projections;
@@ -80,16 +88,18 @@ The app owns:
 - concrete file, web, native-app and connected-service tools; and
 - product policy about which capabilities are available in a run.
 
-The package must not import SwiftUI, AppKit, the app target, its Keychain/catalog types,
-or a concrete app database. Native Mac helpers can become separate integrations only
-when a real consumer proves that boundary; ADR-0002 still rejects speculative package
-graphs.
+The package must not import SwiftUI, AppKit, UIKit, the app target, its
+Keychain/catalog types, or a concrete app database. Native Mac helpers can become
+separate integrations only when a real consumer proves that boundary; ADR-0002 still
+rejects speculative package graphs.
 
 ## 3. Preserve Apple's intelligence-session types
 
 Use `Transcript` as the canonical model conversation and `LanguageModelSession` for the
 basic model/tool/model cycle. Use `FoundationModels.Tool`, `Generable` and
-`GenerationSchema` at model-facing seams.
+`GenerationSchema` at model-facing seams. Runtime entry points accept a generic or
+type-erased `LanguageModel` supplied by the host; model location is not part of the run
+algorithm.
 
 Do not introduce:
 
@@ -222,7 +232,10 @@ The package ships its testing surface as part of the framework experience:
 - indeterminate side-effect and reconciliation scenarios;
 - cross-provider transcript reconstruction;
 - trajectory/effect assertions and replay; and
-- gated live provider/session cycles with non-printing environment-key checks.
+- gated live provider/session cycles with non-printing environment-key checks;
+- iOS and macOS compile/test jobs for the package core; and
+- gated `SystemLanguageModel` execution on an eligible iPhone and Mac, with unavailable
+  hardware/settings/assets treated as an explicit skip rather than a pass.
 
 Public APIs use immutable `Sendable` values, actors, `async`/`await`, `AsyncSequence`,
 `Clock`, `Duration`, typed errors and exhaustive state enums. Result builders are
@@ -244,14 +257,16 @@ let report = try await run.value
 
 The increment is complete only when the repository contains and runs:
 
-1. one macOS 27 native Swift agent-runtime SPM package with the boundary above;
+1. one iOS 27/macOS 27 native Swift agent-runtime SPM package with the boundary above;
 2. production OpenAI-compatible and Anthropic Foundation Models executors refactored
    from the existing transports;
 3. `TaskCoordinator`, run journal, transcript archive, checkpoint and run-policy core;
 4. the minimum tool bridge needed for one complete model/tool/model cycle;
 5. Work Agent app integration through package APIs, with no package import of app/UI;
 6. restart recovery of a real task and a legible live status projection;
-7. the deterministic conformance/fault suite and three gated live provider cycles;
+7. the deterministic conformance/fault suite on both package platforms, three gated
+   live cloud-provider cycles, and gated Apple on-device cycles on an eligible iPhone
+   and Mac;
 8. requirement IDs in production code/tests and all living docs updated to reality;
 9. DocC plus runnable simple/advanced examples; and
 10. a clean cold-provider path: adding a provider changes only its executor/configuration

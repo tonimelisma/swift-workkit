@@ -103,17 +103,19 @@ records what we measured so nobody redoes it.
 ## Increment 4 — The three-layer runtime and a durable task
 
 Create the one deliberate SPM boundary from ADR-0002: a native Swift agent-runtime
-package built on macOS 27 Foundation Models. Adapt the two shipped provider transports
-to `LanguageModelExecutor`, drive `LanguageModelSession` from a durable coordinator,
-and integrate it into the app against a provider configured in increment 2. The app
+package supporting iOS 27 and macOS 27 Foundation Models and any injected
+`LanguageModel`. Adapt the two shipped cloud-provider transports to
+`LanguageModelExecutor`, drive `LanguageModelSession` from a durable coordinator, and
+integrate it into the macOS app against a provider configured in increment 2. The app
 owns task persistence and presentation; the package owns provider-neutral execution.
 No general work tools yet.
 
 **Done when:** a real model call crosses all three layers, its result lands in a task
 that survives an app restart, and the task's status is observable while it runs. The
 package has no dependency on the app target or SwiftUI, its deterministic conformance
-suite passes, and the task model's FR IDs are written at this increment's DOR from
-whatever Toni actually specifies.
+suite builds and passes for macOS and iOS, a gated eligible-device test exercises
+`SystemLanguageModel`, and the task model's FR IDs are written at this increment's DOR
+from whatever Toni actually specifies.
 
 ## Increment 5 — First tools, tested
 
