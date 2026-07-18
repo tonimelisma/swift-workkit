@@ -73,7 +73,11 @@ Hardened Runtime stays on for notarization.
 
 ## Increment 3 — Runtime and neutrality research → ADR-0006
 
-Research spike. Produces docs and one ADR; no product code.
+Research spike. Produces docs and one ADR; no product code. **Research done
+2026-07-18 — live tool-calling POCs in
+[research/agent-loop-runtimes.md](../research/agent-loop-runtimes.md);
+[ADR-0006](../decisions/0006-native-swift-agent-loop.md) (native Swift loop)
+proposed, awaiting Toni's acceptance.**
 
 The question: **what runs the agent loop, given that model neutrality is
 non-negotiable?** Neutrality eliminates the Claude Agent SDK and Claude Code outright —
