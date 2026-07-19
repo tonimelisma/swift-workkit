@@ -99,9 +99,13 @@ are declared as data (`WriteReport().annotations(.writesFiles)`), never as a
 protocol to adopt; MCP tools carry their own hints. Consequential tools are
 journaled before they execute, so a crash between a side effect and its record
 is detected on resume instead of silently repeated, and two tool calls against
-the same resource never race. Context assembly is injectable policy: the next
-request's history is measured, compacted, and budgeted rather than
-concatenated until the window bursts.
+the same resource never race. Compaction ships as policy with batteries: old tool
+results cleared past a threshold, conversations summarized and folded, or the
+provider's own compaction where one exists (OpenAI's `/responses/compact` and
+server-side threshold, Anthropic's context editing) — selectable per run,
+custom strategies injectable. Whatever the strategy, only the model-facing
+projection shrinks; the journal keeps the uncompacted truth, so traces and
+replay are unaffected.
 
 ```swift
 let run = try await runtime.run(

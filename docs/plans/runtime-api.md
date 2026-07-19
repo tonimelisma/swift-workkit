@@ -139,6 +139,30 @@ types are how state is held; the executor decides what is sent — which is also
 the escape valve for `GenerationSchema`'s strict subset (an executor may send a
 fuller wire schema than Apple's type expresses, with host-side validation).
 
+### Compaction: shipped strategies, one policy, one invariant
+
+Decided 2026-07-19 after verifying the provider landscape. The runtime *ships*
+compaction, not merely a hook:
+
+1. **Tool-result clearing** — old tool outputs dropped past a token threshold,
+   placeholder retained (Anthropic measured 84% token reduction from this
+   strategy alone).
+2. **Summarize-and-fold** — model-generated summary replaces old turns;
+   instructions and recent turns survive. Provider-neutral; the default.
+3. **Provider-native compaction via tier-1 executor options** — OpenAI's
+   `/responses/compact` endpoint and `compact_threshold` server-side mode
+   (Feb 2026; xAI equivalent), Anthropic's `clear_tool_uses` context editing.
+   Provider compaction artifacts (e.g. OpenAI's compaction item) are
+   provider-owned state: namespaced, ownership-tagged, stripped on failover.
+
+Selection and thresholds are `RunPolicy`; custom strategies implement the
+`ContextAssembler` seam over Apple's `historyTransform`. The invariant all
+strategies obey: **compaction changes only the model-facing projection — the
+journal and transcript archive keep the uncompacted truth**, so traces,
+replay, and evals never degrade. Framework context: LangGraph and Pydantic AI
+ship hooks/utilities only; Vercel has an open feature request for OpenAI
+server-side compaction; no framework offers all three tiers behind one policy.
+
 ## 5. DX commitments
 
 - **Progressive disclosure, one runtime.** The simple call and the advanced host
