@@ -166,13 +166,13 @@ Everything below this line is the **code-increment** process.
 
 ### Before starting: Definition of Ready
 
-**The DOR is a gate, not an announcement.** Post the list, then stop. Toni gives an
-explicit go-ahead. No code is written before that go-ahead — not a scaffold, not a
-"quick start while we discuss," nothing. Posting a DOR and building in the same turn is
-not a DOR; it's a courtesy notice, and it defeats the entire point of aligning first.
+**Post the DOR, then proceed.** No separate go-ahead post, no waiting turn — Toni
+asking for the increment (or for the standing list of increments) is the authorization.
+Posting the list is still mandatory: it's how a bad assumption gets caught before code
+gets written on top of it, not a courtesy notice to skip.
 
-If any item is ❌ or ⚠️, that is the thing to resolve. It is never a thing to note and
-proceed past.
+If any item is ❌ or ⚠️, that is the thing to resolve before proceeding — it is never a
+thing to note and proceed past regardless.
 
 - ✅/❌ **Every requirement in play traces to something Toni said** — quote it. Requirements
   I inferred are open questions, not requirements. See Non-negotiable 0.
@@ -181,8 +181,9 @@ proceed past.
 - ✅/❌ Any decision with real alternatives has an ADR planned, not an assumption
 - ✅/❌ We have read the affected code paths and can say concretely how they change
 - ✅/❌ Research needed to make this decision is done, or is explicitly this increment's first step
-- ✅/❌ **Toni has given an explicit go-ahead.** His words, this increment. Not inferred
-  from enthusiasm, not from "let's build," not from a previous increment's approval.
+
+An open question surfaced by a ❌ still gets asked, even mid-increment — this section
+removes the standing approval checkpoint, not Non-negotiable 0.
 
 Don't fake a ✅. A ❌ with a sentence about why is the point of the list.
 
