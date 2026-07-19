@@ -13,6 +13,7 @@
 		9B154F2DB4F1D88E092310C6 /* ToolVocabulary in Frameworks */ = {isa = PBXBuildFile; productRef = D7254921814F5403D1B51BE9 /* ToolVocabulary */; };
 		B46F40A9880A7F1F1EA9E234 /* Executors in Frameworks */ = {isa = PBXBuildFile; productRef = A7CE4D8B9E87F09A046EDBE3 /* Executors */; };
 		CC1E45F19D0D15C5DDAD4AF8 /* RuntimeTesting in Frameworks */ = {isa = PBXBuildFile; productRef = DA6441EE862D3BF08E4C4272 /* RuntimeTesting */; };
+		D3E5413CB059AA3C93BB31F8 /* ToolKitForMac in Frameworks */ = {isa = PBXBuildFile; productRef = FBED4230912306957AFF0ED6 /* ToolKitForMac */; };
 		E0C14823A0E2D520B36F6A41 /* RuntimeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 52A84503B19A465455F7AB9C /* RuntimeCore */; };
 /* End PBXBuildFile section */
 
@@ -50,6 +51,7 @@
 				E0C14823A0E2D520B36F6A41 /* RuntimeCore in Frameworks */,
 				B46F40A9880A7F1F1EA9E234 /* Executors in Frameworks */,
 				9B154F2DB4F1D88E092310C6 /* ToolVocabulary in Frameworks */,
+				D3E5413CB059AA3C93BB31F8 /* ToolKitForMac in Frameworks */,
 			);
 		};
 		3BA48E8B30081232004FE0C7 /* Frameworks */ = {
@@ -103,6 +105,7 @@
 				52A84503B19A465455F7AB9C /* RuntimeCore */,
 				A7CE4D8B9E87F09A046EDBE3 /* Executors */,
 				D7254921814F5403D1B51BE9 /* ToolVocabulary */,
+				FBED4230912306957AFF0ED6 /* ToolKitForMac */,
 			);
 			productName = "Work Agent";
 			productReference = 3BA48E8130081230004FE0C7 /* Work Agent.app */;
@@ -509,6 +512,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
 			productName = RuntimeTesting;
+		};
+		FBED4230912306957AFF0ED6 /* ToolKitForMac */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60924F2DACAE3FA00D1A9A81 /* XCLocalSwiftPackageReference "AgentKit" */;
+			productName = ToolKitForMac;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

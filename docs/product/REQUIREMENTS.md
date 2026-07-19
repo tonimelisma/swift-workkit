@@ -14,7 +14,7 @@ testable: *The system shall…* (always), *While/When/Where/If…* (conditional)
 `FR` = functional, `NFR` = non-functional. **IDs are permanent and never reused.**
 A dropped requirement is deleted from this doc — no tombstones — and git history is
 the archive. So a number is never handed out twice, the next free IDs are tracked
-here: **next FR: FR-074 · next NFR: NFR-011.**
+here: **next FR: FR-084 · next NFR: NFR-011.**
 
 **Status:** `Specified` (agreed, not built) · `Implemented` (built, tested, traced).
 
@@ -157,6 +157,39 @@ wiring doesn't break at runtime, but the pause-and-resume UI path itself (send a
 quit mid-stream, relaunch, see the paused banner, click Resume) was not exercised
 end-to-end in the running app — screen-control access to drive it interactively was
 declined.
+
+## Tools
+
+The increment-5 starter set, decided in
+[tool-architecture.md](../plans/tool-architecture.md) and recorded as settled in
+ROADMAP.md's "Decided: the increment-5 starter tool set" — quotes trace to that doc's
+citations of Toni's words, not to a new conversation. Built as AgentKit `ToolKit*`
+products (runtime-api.md §6), not app code; no approval gate this increment (see
+Non-goals: "specific tool approvals will come later").
+
+| ID | Requirement | Traces to | Status |
+|---|---|---|---|
+| **FR-074** | The system shall provide a `read_file` tool that reads text, image, PDF, and docx content from a path, paging output that exceeds the model-facing budget. | tool-architecture.md §3; "docx text in increment 5" | Implemented — text/PDF/docx; image support explicitly deferred (would need a multi-modal `Tool.Output` type) |
+| **FR-075** | The system shall provide a `list_folder` tool that lists a directory's entries, optionally recursive to a bounded depth. | tool-architecture.md §3, the six-file-tools decision | Implemented |
+| **FR-076** | The system shall provide a `find_files` tool that matches file paths by glob pattern under a root. | tool-architecture.md §3, the six-file-tools decision | Implemented |
+| **FR-077** | The system shall provide a `search_files` tool that greps file contents by regex, implemented in native Swift with no bundled binary. | "I generally prefer native Swift", then "do it" | Implemented |
+| **FR-078** | The system shall provide a `write_file` tool that creates or atomically replaces a file's contents. | tool-architecture.md §3, the six-file-tools decision | Implemented |
+| **FR-079** | The system shall provide an `edit_file` tool that performs an exact-match string replacement, requiring the file to have been read first. | tool-architecture.md §3, the six-file-tools decision | Implemented |
+| **FR-080** | The system shall provide an `ask_user` tool that suspends the run to ask the user 1–4 questions with 2–4 options each plus free text, resuming on answer. | tool-architecture.md §3 | Specified — built and tested as a ToolKit product; not wired into the app (no question-card UI/presenter built yet) |
+| **FR-081** | The system shall provide an `update_plan` tool that records an ordered list of steps with exactly one in progress. | tool-architecture.md §3 | Specified — built and tested as a ToolKit product; not wired into the app (no plan-display UI/recorder built yet) |
+| **FR-082** | The system shall provide a `fetch_url` tool that fetches a web page and returns it as paged Markdown, with no extraction model call. | "no extraction model, no second model call" | Implemented |
+| **FR-083** | The system shall provide a `web_search` tool: the provider's hosted search where the provider offers one, else a neutral Brave-backed search. | "Both." | Specified — the Brave-backed neutral path is built and tested against a stubbed response; live use is blocked on a Brave Search API key, which wasn't obtained (account creation is outside what gets done unilaterally). Provider-hosted search is not yet wired into any executor. |
+
+**On FR-074–083.** The six file tools and `fetch_url` are wired into the live app's
+tool list (`RuntimeEnvironment.fileAndWebTools`) and exercised via 72 AgentKit tests
+(`AgentKit/Tests/ToolKitFilesTests`, `ToolKitWebTests`) covering paging, the
+read-before-write rule, glob/regex edge cases, SSRF host checks, and a real in-memory
+.docx fixture. `ask_user`/`update_plan`/`web_search` are built and tested the same way
+but stop short of app wiring for the reasons named above — a real gap, not a
+rounding error. Tool calls are not yet wrapped in `InstrumentedTool` at the app
+integration point (the run id needed to wrap a tool isn't available until the
+coordinator starts the run), so tool invocations aren't yet journaled individually —
+noted as follow-up work, not claimed as done.
 
 ## Non-functional
 
