@@ -64,7 +64,11 @@ The package owns:
 - the durable run state machine and immutable `Sendable` state values;
 - actor-isolated mutable coordination;
 - run, attempt, interrupt, checkpoint and tool-invocation identity;
-- storage protocols for journals, checkpoints and transcript archives;
+- storage protocols for journals, checkpoints and transcript archives — designed
+  **suspension-safe from the start**: a checkpoint must be durable at the moment the
+  OS freezes or kills the process without warning, because the planned iOS
+  reference app (RUNTIME.md §5) lives under exactly that regime and retrofitting
+  checkpoint atomicity defeats its purpose;
 - retry, fallback, circuit-breaker and composable run-limit policy;
 - context assembly and model-facing history projection;
 - a richer host tool contract, tool execution and Apple `Tool` bridging;

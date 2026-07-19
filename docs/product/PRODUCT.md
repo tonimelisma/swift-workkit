@@ -142,8 +142,9 @@ Explicit, so they don't get smuggled in:
 - Mac App Store distribution — see ADR-0003.
 - **Locally-hosted models. Ever.** "no local models ever."
 - **Resellers and aggregators** — first-party providers only, for now.
-- A mobile or web Work Agent companion. The reusable agent-runtime SPM package supports
-  iOS 27 for other native apps; that does not put an iPhone Work Agent app in scope.
+- A mobile or web Work Agent *companion*. An iOS app is now planned, but it belongs
+  to the runtime as a sibling reference product with its own iOS-shaped tool set —
+  see [RUNTIME.md](RUNTIME.md) §5 — not as a remote control for this Mac app.
 
 ---
 

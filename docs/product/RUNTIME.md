@@ -93,7 +93,34 @@ Foundation Models:
 - Not multi-agent-first — teams/handoffs wait for evidence a single durable
   agent is insufficient.
 
-## 5. Relationship to Work Agent
+## 5. Relationship to the apps — canonical reference implementations
+
+Decided 2026-07-18 (Toni: the apps "would be the canonical reference
+implementation. Pleasant, high quality apps on their own, but also the reference
+implementation that shows how to use the SDK, utilizes all the latest
+capabilities… and we would have tools for iOS too"):
+
+- **Same repo, one Xcode workspace.** The runtime is a local SPM package; the
+  macOS app (and later the iOS app) are workspace targets referencing it by
+  path. Publication structure — restructure with the package at the repo root
+  and apps in subfolders, or split the package's repo — is deferred to the
+  release gate below, since SwiftPM only demands a root manifest for *remote*
+  consumption.
+- **Two apps, both real products and both canonical references.** Work Agent
+  macOS (PRODUCT.md) and a future iOS sibling. The iOS app is not a port or a
+  companion: iOS's mandatory sandbox means its tool set is scoped-file access,
+  EventKit, Contacts, Reminders, App Intents, share extensions — the same
+  runtime and annotations over platform-conditional tool modules. iOS also
+  forces the permissions/consent design on its own schedule, ending the "no
+  folders yet" luxury for that app.
+- **Plus a minimal `Examples/` folder in the package** — product apps prove the
+  runtime at scale, but developer onboarding needs 50-line copy-paste examples
+  (a durable-run hello world, an annotated tool, resume-after-kill). Product
+  code never carries tutorial duty alone.
+- **Sequencing:** the iOS app enters the roadmap only after the runtime exists
+  and the macOS app proves it (see ROADMAP's deferred table). Its one
+  now-consequence: checkpoints are designed suspension-safe from the start,
+  because retrofitting that defeats their purpose.
 
 Work Agent (PRODUCT.md) stays a macOS product for non-developers; the runtime is
 the layer it proves. The dependency is one-way — the package never knows the app
@@ -115,10 +142,11 @@ Decided by Toni when they block something, not before:
 - **Name.** "AgentKit" is a working label only; the public name is unchosen.
 - **License and openness.** Open source, source-available, or private — undecided,
   and it shapes the conformance-suite ecosystem play.
-- **Repo home and split timing.** Lives in this repo until extraction earns a
-  separate one.
-- **iOS scope.** "Runs on iOS" (compile + conformance) vs suspension-safe durable
-  runs (BGTaskScheduler-aware) — the second is the differentiator and the cost.
+- **Publication structure.** Same repo and workspace, decided (§5); root-package
+  restructure vs repo split happens at the release gate.
+- **iOS depth.** Suspension-safe durable runs are the committed *design* target
+  (§5); how far the first iOS release goes into BGTaskScheduler/push-resume
+  territory is scoped when the iOS app enters the roadmap.
 - **The studio.** A local-first trace/replay/eval app (Work Agent's trace UI,
   generalized) is a candidate third product, unscheduled.
 - **Release gate.** No public tag before the OS 27 GA — beta ABI churn is real

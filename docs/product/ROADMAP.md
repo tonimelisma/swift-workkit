@@ -169,6 +169,7 @@ written.
 | **Sandboxed code execution** | Something needs to run generated code — shell/exec stays out of the tool set until an isolation ADR exists. |
 | **Automations, scheduling** | Post-engine. |
 | **Onboarding, multi-user, enterprise policy** | Distribution reaches people who aren't Toni. |
+| **iOS reference app + iOS tool modules** | The runtime exists and the macOS app proves it. Decided direction, not scheduled — see [RUNTIME.md](RUNTIME.md) §5. Checkpoints are designed suspension-safe from the start so this doesn't force a rework. |
 
 ---
 
