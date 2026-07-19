@@ -71,6 +71,18 @@ corrective output instead of terminating the response. Limits compose: turns,
 tokens, cost, wall-clock, tool calls. A run can switch providers mid-flight;
 provider-owned state is stripped, the conversation continues.
 
+Tools need no changes to benefit. Any `FoundationModels.Tool` run through the
+runtime gains tracing, timeouts, and output budgets — an oversized result
+reaches the model as a first page or a summary plus instructions for getting
+the rest, while the full output lands in the trace. Effects and idempotency
+are declared as data (`WriteReport().annotations(.writesFiles)`), never as a
+protocol to adopt; MCP tools carry their own hints. Consequential tools are
+journaled before they execute, so a crash between a side effect and its record
+is detected on resume instead of silently repeated, and two tool calls against
+the same resource never race. Context assembly is injectable policy: the next
+request's history is measured, compacted, and budgeted rather than
+concatenated until the window bursts.
+
 ```swift
 let run = try await runtime.run(
     Agent(model: deepseek, instructions: "Prepare the weekly report.",
