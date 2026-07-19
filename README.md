@@ -37,6 +37,17 @@ intact. Capabilities the FM API doesn't model — prompt caching, server-side
 tools, thinking budgets — are typed options on the executor's configuration,
 not lost in translation.
 
+The commitment is structural, not a feature list: the executor owns the wire,
+so a vendor capability never waits for Apple's abstraction to catch up. It
+lands in one of three places. Request-level features become typed executor
+options. Provider-owned conversation state lives in namespaced transcript
+metadata that replays to its owner and is stripped on a provider switch.
+Non-conversational surfaces — batch processing, file stores — get plain
+direct clients instead of being contorted into a session. Where a provider
+accepts richer tool schemas than `GenerationSchema` can express, the executor
+can send the fuller schema on the wire and validate host-side. Models are
+never cut down to the lowest common denominator to look interchangeable.
+
 ```swift
 let claude = AnthropicModel(.sonnet5, apiKey: key,
                             options: .init(serverTools: [.webSearch]))
