@@ -34,6 +34,20 @@ nothing in the working tree exists to memorialize a dead decision.
 These docs are MECE. If a fact belongs in two of them, it belongs in one and is linked
 from the other. Duplicated facts drift and then lie.
 
+**How the docs flow.** Vision (PRODUCT, RUNTIME) → design (plans) → **the DOR is the
+minting moment**: plan content becomes requirements with FR IDs there, from Toni's
+words, never before → code and tests carry the IDs → the DOD flips `Specified` to
+`Implemented` and updates ENGINEERING.md to the new reality. Two rules that keep the
+flow honest:
+
+- **ROADMAP syncs on scope, not on design.** A doc change that alters what an
+  increment delivers or in what order updates ROADMAP in the same commit; a design
+  change inside an increment's existing scope doesn't touch it.
+- **Plans die by absorption.** When an increment implements part of a plan, that part
+  is deleted from the plan in the increment's DOD — its facts now live in
+  ENGINEERING.md and REQUIREMENTS.md, and a plan section describing built reality is
+  stale by definition. What remains in a plan is always and only the unbuilt.
+
 ---
 
 ## Non-negotiables
