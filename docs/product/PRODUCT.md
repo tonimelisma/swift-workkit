@@ -98,6 +98,10 @@ we've failed.
 
 A native macOS 27-or-later application that:
 
+- is driven through **chat** — "the user chats" (Toni, 2026-07-18, settling how the
+  product works: like Claude Cowork). The conversation is the unit of work; the agent
+  reasons and uses tools inside it. There is no canned-task catalog, no task
+  templates, and no separate task surface;
 - runs agent orchestration **locally**, on the user's Mac;
 - talks to **whatever model the user chose**, via an API key they own — from a curated
   set of the best agentic models across vendors. Cloud only, and no local models ever;
@@ -156,10 +160,6 @@ that depends on them.
 - **Background execution.** Does work survive the window closing in v1? Deciding "yes"
   later costs a painful retrofit; deciding "yes" now costs XPC and a LaunchAgent before
   the product is validated.
-- **The first real task.** Deferred to increment 7, deliberately. It gets picked once we
-  have a working app that talks to an LLM and a set of tools we've actually tested — so
-  the choice is made against what the thing demonstrably does, not against imagination.
-  The risk this carries, and what bounds it, is in ROADMAP.md.
 - **OpenAI subscription sign-in (FR-067).** Toni asked for it. Anthropic's equivalent is
   explicitly banned; OpenAI's is undocumented — neither permitted nor prohibited. The
   "OpenAI explicitly supports this" claim comes from OpenClaw's docs and cites nothing.

@@ -288,8 +288,13 @@ increment DOR must choose one; two drifting implementations are not acceptable.
 ## 10. Open questions for increment 4
 
 1. **Public package/module name.** `AgentKit` is only a working label.
-2. **What is a task in the UI?** The existing conversation, a task list beside chat, or
-   a task-first main window.
+2. ~~What is a task in the UI?~~ **Answered 2026-07-18** (Toni: "the user chats" —
+   like Claude Cowork). The conversation is the unit of work; the agent loop lands in
+   the existing chat window, and durable runs belong to conversations. No separate
+   task surface, ever. The concrete residue for the DOR: does v1 support **multiple
+   concurrent conversations** (Cowork-style sidebar) or one, and what happens to an
+   in-flight run on quit — pause-and-offer-resume or auto-resume at relaunch (the
+   window-closure half stays with PRODUCT.md's background-execution question).
 3. **Concrete app persistence.** SwiftData, Codable files, or SQLite/GRDB. The package
    exposes protocols and does not decide this app choice.
 4. **Failover v1.** Manual user-selected resume or automatic designated fallback.

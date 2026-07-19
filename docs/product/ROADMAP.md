@@ -10,23 +10,26 @@ fixed, so amortize it. There are no dates. There is an order.
 
 ---
 
-## Sequencing: engine first, then tasks
+## Sequencing: engine first, then priorities from real use
 
-Tasks get picked once we have **a working app that talks to an LLM and a set of tools
-we've actually tested.** Not before.
+The product is a chat — the user asks for whatever they need (PRODUCT.md §3; there is
+no task catalog to design). So what gets prioritized *after* the engine — which
+tools, which connectors, when permissions — is decided once we have **a working app
+that talks to an LLM and a set of tools we've actually tested**, by using it. Not
+before.
 
-The reasoning: choosing tasks up front means choosing them from imagination. Choosing
-them after the engine and tools exist means choosing from what the thing demonstrably
-does — which is a fundamentally better-informed decision, and cheap, because by then
-we'll know the real cost of each candidate.
+The reasoning: choosing priorities up front means choosing them from imagination.
+Choosing them after the engine and tools exist means choosing from what real chats
+demonstrably need — a fundamentally better-informed decision, and cheap, because by
+then we'll know the real cost of each candidate.
 
 The failure mode this carries is real and worth naming: an engine with nothing to be
 right or wrong about grows forever. The previous draft of this project reached ten
 phases and seven Swift packages without one working feature. What keeps us out of that
 hole is that increments 2, 4, 5, and 6 each have a concrete, falsifiable exit — a real model call,
 a real tool doing a real thing, a second provider working cold. None of those are
-opinions. Increment 7 is a hard stop where we pick tasks or admit the engine isn't
-done.
+opinions. Increment 7 is a hard stop where real use starts steering, or we admit the
+engine isn't done.
 
 ---
 
@@ -100,7 +103,7 @@ goes to ADR-0006.
 **Done when:** ADR-0006 is written with alternatives and evidence, and a research doc
 records what we measured so nobody redoes it.
 
-## Increment 4 — The three-layer runtime and a durable task
+## Increment 4 — The three-layer runtime and a durable conversation
 
 Create the one deliberate SPM boundary from ADR-0002: a native Swift agent-runtime
 package supporting iOS 27 and macOS 27 Foundation Models and any injected
@@ -115,12 +118,13 @@ the API it must converge on is [docs/plans/runtime-api.md](../plans/runtime-api.
 the product frame is [RUNTIME.md](RUNTIME.md). The plan's §10 lists the open
 questions this increment's DOR puts to Toni.
 
-**Done when:** a real model call crosses all three layers, its result lands in a task
-that survives an app restart, and the task's status is observable while it runs. The
-package has no dependency on the app target or SwiftUI, its deterministic conformance
-suite builds and passes for macOS and iOS, a gated eligible-device test exercises
-`SystemLanguageModel`, and the task model's FR IDs are written at this increment's DOR
-from whatever Toni actually specifies.
+**Done when:** a real model call crosses all three layers, its result lands in a
+conversation that survives an app restart, and the conversation's status is
+observable while a run is in flight. The package has no dependency on the app target
+or SwiftUI, its deterministic conformance suite builds and passes for macOS and iOS,
+a gated eligible-device test exercises `SystemLanguageModel`, and the
+durable-conversation FR IDs are written at this increment's DOR from whatever Toni
+actually specifies.
 
 ## Increment 5 — First tools, tested
 
@@ -152,13 +156,16 @@ registration, and every increment-5 tool works through it — or NFR-001 gets re
 to say what's actually true. Both outcomes are acceptable. Quietly keeping a false
 NFR-001 is not.
 
-## Increment 7 — Pick the tasks
+## Increment 7 — Real use starts steering
 
-Not a build increment. A product decision, made with the engine and tools in front of
-us, drawn from work Toni actually does — not from a category list.
+Not a build increment, and **not a task catalog** — Toni, 2026-07-18: "real tasks as
+in evals… no, we don't need that. … the user chats." The product is a chat; there is
+nothing to pre-select. This increment is Toni doing his actual work through the app,
+and the observed gaps — a missing tool, a needed connector, permission friction, a
+context limit — choosing the next increments from the horizon table below.
 
-**Done when:** the real first task is named in PRODUCT.md and its requirements are
-written.
+**Done when:** the increment after 6 is chosen from observed real use and its DOR is
+posted.
 
 ---
 
@@ -172,8 +179,7 @@ and the dependency arrows are the only ordering claimed:
 
 | Future increment | Depends on | What it delivers |
 |---|---|---|
-| **Work Agent's first real tasks** | Increment 7's pick | The macOS app becomes genuinely useful; drives all later prioritization |
-| **Permissions and approvals** | First consequential real-task tools | The deferred approval model, designed once real tools show what needs gating |
+| **Permissions and approvals** | Real use showing what needs gating (increment 7) | The deferred approval model, designed against observed friction rather than imagined risk |
 | **MCP** | Tool host proven (increment 5) | MCP client + the schema degradation ladder (runtime-api.md §4) |
 | **Runtime API hardening** | Increments 4–6 stable | Public-API review against runtime-api.md, DocC, `Examples/`, conformance suite made public |
 | **Extraction and publication** | API hardening **and OS 27 GA** (release gate, RUNTIME.md §6) | Package restructure-or-split, name and license decisions, first public tag |
@@ -190,7 +196,7 @@ table's dependency order and confirmed at its DOR — not assumed.
 
 | Deferred | Until |
 |---|---|
-| **The real first task** | Increment 7 — once a working app talks to an LLM and has tools we've tested. Picked from actual work Toni does. |
+| **Post-engine priorities** (next tools, connectors, permissions timing) | Increment 7 — chosen from observed real use, not imagination. |
 | **Which tools to build first** | Decided — see below and [docs/plans/tool-architecture.md](../plans/tool-architecture.md). |
 | **Background execution** (LaunchAgent, XPC) | The product is validated. Retrofit cost is real and acknowledged; paying it before we know the product is worse. |
 | **Connections** (Gmail, Drive, M365) | A real task needs one. |
