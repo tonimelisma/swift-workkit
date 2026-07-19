@@ -46,3 +46,10 @@ evidence has to be redone the moment anyone doubts it — which defeats the poin
 | [agent-framework-comparison.md](agent-framework-comparison.md) | Developer comparison of popular agent frameworks against the proposed loop/tool layer; production-runtime gaps and a native Swift AgentKit thesis | 2026-07-18 |
 | [apple-llm-stack-second-opinion.md](apple-llm-stack-second-opinion.md) | Independent verification of the three-layer bet: SDK read first-hand, POC re-run, vendor/HF packages checked; four design dissents and the SPM product shape | 2026-07-18 |
 | [foundation-models-adaptation.md](foundation-models-adaptation.md) | Whether and how to adapt the loop to macOS 27 Foundation Models: API mapping, hybrid boundary, measured session semantics, and passing live executors/model switch | 2026-07-18 |
+
+**A note on retired references.** Older research docs cite `ADR-NNNN` files and the
+former RUNTIME.md/REQUIREMENTS.md. Those documents were merged in the 2026-07-19
+restructure: decision rationale lives in ENGINEERING.md's "Why it is built this way"
+(app-side: docs/app/APP.md), implemented features with their FR/NFR IDs in
+PRODUCT.md, and future vision in ROADMAP.md. The citations remain as historical
+names; git history holds the originals.

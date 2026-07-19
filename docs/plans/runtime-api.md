@@ -2,7 +2,7 @@
 
 **Status: north star, 2026-07-18.** The API shape the runtime SPM is aiming for,
 recorded from the 2026-07-18 design discussion at Toni's direction. Product
-rationale: [../product/RUNTIME.md](../product/RUNTIME.md). Increment-4 internals:
+rationale: ../product/ROADMAP.md (vision) and ../product/PRODUCT.md (implemented). Increment-4 internals:
 [agent-loop-implementation.md](agent-loop-implementation.md). Like every plan,
 binding details are confirmed at each increment's DOR; unlike increment plans, this
 doc describes the *end state* several increments converge on.

@@ -3,8 +3,8 @@
 **Status: increment 4 built 2026-07-19** (the runtime half of increment 5 — ToolKit
 products — remains a proposal). This was the build plan for ROADMAP increment 4. It
 implements the accepted three-layer decision in
-[ADR-0006](../decisions/0006-native-swift-agent-loop.md) and the single justified
-package boundary in [ADR-0002](../decisions/0002-monolith-until-seams-are-known.md).
+ADR-0006 (absorbed into ENGINEERING.md "Why") and the single justified
+package boundary in ADR-0002 (absorbed into ENGINEERING.md "Why").
 §10's open questions are answered below; ENGINEERING.md describes the resulting code.
 
 The older untracked draft proposed a custom `AgentMessage`, provider extras bag,

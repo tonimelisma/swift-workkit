@@ -1,169 +1,116 @@
-# Work Agent — Product
+# AgentKit — The Product That Exists
 
-**Status:** Living. Last substantive change: 2026-07-18.
+**Implemented features only.** Future work lives in [ROADMAP.md](ROADMAP.md); how the
+code works lives in [ENGINEERING.md](../engineering/ENGINEERING.md). Every feature
+here carries its permanent ID and the reason it's shaped the way it is, quoting Toni
+where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
+**Next free: FR-084 · NFR-011.** (App-specific features — chat UI, settings,
+conversation sidebar — are recorded in [../app/APP.md](../app/APP.md) and leave with
+the app.)
 
-This doc holds the bet: what we're building, for whom, why it can exist, and what it
-is not. Testable statements live in [REQUIREMENTS.md](REQUIREMENTS.md). Sequencing
-lives in [ROADMAP.md](ROADMAP.md).
-
-**This repo now carries two products** (Toni, 2026-07-18: "Work Agent will be the
-reference app implementation building on top of the SPM which we carve out"). This
-doc is the app's; the agent-runtime SPM package has its own north star in
-[RUNTIME.md](RUNTIME.md) — same neutrality spine, different customer (Swift
-developers rather than end users). Where the two trade off, the runtime serves the
-app first until the runtime has users of its own.
-
----
-
-## 1. The thesis
-
-Every serious agent product today is welded to the model company that ships it. Claude
-Cowork is Anthropic's. ChatGPT Work is OpenAI's. Both will be good. Both are structurally
-incapable of being neutral, because neutrality would undermine the thing they're selling.
-
-We're betting that:
-
-- **Inference commoditizes.** The gap between frontier and good-enough narrows, open
-  models get genuinely usable for real work, and price per token keeps collapsing.
-- **The app layer is where the durable value ends up** — the interaction model, the
-  trust model, the memory, the integrations, the judgment about what to show a user
-  and when to ask.
-- **Users already pay for a model subscription** and don't want to pay again per app.
-  A ChatGPT or Claude subscription they already pay for should just work.
-  **Partly blocked — see below.**
-
-If that's right, an app that innovates independently of any model vendor wins ground
-that the vendors' own apps cannot contest. If it's wrong — if one model runs away with
-it and vertical integration wins — this product is worse than a wrapper.
-
-That's the bet. It's stated plainly so we can notice if it stops being true.
-
-### The subscription plank is blocked (2026-07-16)
-
-Researched because Toni asked for ChatGPT subscription auth. Full evidence:
-[research/provider-subscription-auth.md](../research/provider-subscription-auth.md).
-
-**Anthropic bans it outright** — OAuth is "intended exclusively for Claude Code and
-Claude.ai," enforced since early 2026 with account suspensions. **Google closed the same
-path.** **OpenAI is genuinely unclear**: it documents sign-in for its own clients only,
-but prohibits nothing. The claim that OpenAI "explicitly supports" third-party
-subscription OAuth comes from OpenClaw's own docs and cites no OpenAI source.
-
-So the plank half-survives: the Claude half is dead, the ChatGPT half rests on one
-vendor's silence (FR-067).
-
-**The wedge survives in its stronger form.** Planks 1 and 2 are untouched, and the
-structural advantage was never really the subscription: **no vendor's own app will ever
-let you swap to a competitor's model.** Cowork will never offer GPT. ChatGPT Work will
-never offer Claude. We can offer both. That is permanent, and no amount of vertical
-integration fixes it for them.
-
-**The honest cost:** BYO-API-key is a worse start than BYO-subscription for exactly the
-non-technical audience in §2. "Paste an API key" is a real wall for someone who doesn't
-know what one is. That is a genuine product problem to solve as a product problem — not
-by impersonating someone's CLI.
-
-**Open decision.** This contradicts what Toni asked for, so it is flagged, not settled.
-
-**The consequence for engineering:** model neutrality is not a feature to add later. Any
-decision that couples us to a single provider is wrong by default and needs an ADR to
-become right.
+AgentKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
+products `RuntimeCore`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
+ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
+`ToolKitForMac`). 72 package tests, green on both platforms. MIT.
 
 ---
 
-## 2. Who this is for
+## Provider neutrality through Apple's protocol
 
-**Not developers. Not power users.** People who have work to do and no interest in how
-it gets done.
+- **FR-001 — Implemented.** All inference goes through a provider abstraction; no
+  feature depends on a specific vendor. *Why this shape:* "we need to be able to
+  innovate as an app irrespective of the LLMs." The abstraction is Apple's own
+  `LanguageModel`/`LanguageModelExecutor` protocol rather than a bespoke one,
+  because the Swift ecosystem is standardizing on it (vendor packages, community
+  clones) and a parallel type system would fork that ecosystem. The honest caveat
+  recorded with the decision: for the app alone a custom loop would also have
+  served; Apple's protocol won because the *package's* market is Foundation Models
+  developers. If that bet dies, this choice has a falsifier and revisiting is kept
+  cheap (executors are ours, the loop strategy is swappable).
+- **NFR-009 — Implemented.** macOS 27 minimum (the provider protocol is OS 27 API).
+  Toni accepted: "we'll have three layers."
+- **NFR-010 — Implemented.** The package builds and its suite passes on iOS 27 and
+  macOS 27 both.
 
-Distribution follows a deliberate path, and scope grows with it:
+## Executors: ten cloud providers behind the protocol
 
-| Stage | User | What that means for scope |
-|---|---|---|
-| Now | Toni | No onboarding polish, no multi-account, no enterprise policy. Paste a key, pick a model, go. |
-| Later | Friends | Onboarding must work without the author present. Failure states must explain themselves. |
-| Eventually | Public | Trust model, permission explanation, recovery, and support all become load-bearing. |
+- **Implemented** (built with FR-001): one OpenAI-compatible executor covers the
+  nine curated providers sharing that wire format; one Anthropic executor speaks
+  Messages natively. *Why two, not eleven:* ten providers share one de facto wire
+  standard, so eleven bespoke clients would be waste; Anthropic gets native
+  treatment because a compatibility shim would lag the capabilities that matter.
+  *Why ours even where vendor packages exist:* Anthropic's package assumes
+  proxy-backend auth (opposed to local BYOK keys), is beta and closed to
+  contributions, and cross-provider failover requires knowing exactly where
+  provider state lives.
+- Provider-owned conversation state round-trips at full fidelity — DeepSeek's
+  mandatory `reasoning_content` echo, Gemini thought signatures, Anthropic signed
+  thinking blocks — verified live against real endpoints. *Why it matters:* these
+  requirements are invisible until the second request of an agent loop, and
+  "we're not trying to neuter them" (FR-060's principle; full fidelity work
+  continues on the roadmap).
 
-We build for stage 1 and avoid decisions that make stages 2 and 3 impossible. We do
-**not** build stage 3's features now. When something claims to be needed "for later,"
-that's a roadmap item, not this increment.
+## Durable runs
 
-The user should never need to know what MCP, AppleScript, Accessibility, XPC, OAuth
-scopes, tool schemas, or a sandbox runtime are. If those words appear in the normal UI,
-we've failed.
+- **FR-006 — Implemented.** A run whose provider fails mid-flight preserves its
+  state and **automatically** resumes on a designated fallback, the switch recorded
+  in the trace, the failed provider's opaque metadata stripped on replay. *Why
+  automatic:* "task failover cool"; automatic-not-manual was Toni's explicit call
+  (2026-07-19). No framework in any ecosystem ships this.
+- **FR-072 / FR-073 — Implemented** (app-facing behavior, package-supplied
+  mechanics). A run in flight when the process exits pauses at its next checkpoint
+  and offers resume on relaunch; conversations survive restart. *Why
+  pause-and-offer rather than auto-resume:* Toni's call at planning. The
+  machinery — append-only fsync'd journal, atomic checkpoint store, transcript
+  archive with versioned replay — is designed suspension-safe because the planned
+  iOS reference app lives under forced suspension.
+- Tool instrumentation without a second tool type: any plain `FoundationModels.Tool`
+  gains durable invocation identity and a journal trail through
+  `InstrumentedTool<Base>`. *Why no AgentKit tool protocol:* Apple's `Tool` has no
+  metadata slot but sessions take existentials, so wrapping beats forking the
+  ecosystem's tool noun — effects and idempotency travel as `ToolAnnotations` data.
 
----
+## ToolKit: native tools as package products
 
-## 3. What it is
+*Why in the package at all:* "one of the most valuable parts of this SPM" and
+"absolutely not in the app" (Toni, 2026-07-18). Tools depend only on
+`FoundationModels` + `ToolVocabulary`, never `RuntimeCore` — usable with any model
+package, runtime optional.
 
-A native macOS 27-or-later application that:
+- **FR-074–079 — Implemented.** The six file tools (`read_file`, `list_folder`,
+  `find_files`, `search_files`, `write_file`, `edit_file`): plain paths ("We don't
+  have folders. Permissions come later"), 2,000-line/2,000-char paging with
+  model-followable truncation notices, docx text extraction (a .docx is a zip),
+  read-before-write/edit ledgers, native Swift regex search — no bundled binaries
+  ("I generally prefer native Swift").
+- **FR-080 — Implemented.** `fetch_url`: HTML→Markdown, paged, SSRF-guarded
+  (private/link-local/metadata hosts denied post-resolution). *Why paged markdown,
+  no extraction model:* Toni chose it — zero per-fetch model cost.
+- **FR-081 — Implemented, not live-verified.** `web_search`, Brave-backed ("Both"
+  — provider-hosted search plus a neutral backend was Toni's call; Brave chosen as
+  the conventional-SERP fallback). Tested against stubbed responses; a live key was
+  never supplied.
+- **FR-082 / FR-083 — Implemented in package, not yet surfaced.** `ask_user` and
+  `update_plan`, validated against presenter/recorder doubles; the app UI that
+  would show them doesn't exist yet.
+- Umbrella product `ToolKitForMac` re-exports the platform-true set. *Why umbrellas
+  over platform silos:* one import per platform for developers, shared domain
+  targets underneath because the overlap (parsers, paging, schemas) is the
+  expensive part and schemas must stay identical cross-platform (Toni: two
+  platform toolkits, 2026-07-19).
 
-- is driven through **chat** — "the user chats" (Toni, 2026-07-18, settling how the
-  product works: like Claude Cowork). The conversation is the unit of work; the agent
-  reasons and uses tools inside it. There is no canned-task catalog, no task
-  templates, and no separate task surface;
-- runs agent orchestration **locally**, on the user's Mac;
-- talks to **whatever model the user chose**, via an API key they own — from a curated
-  set of the best agentic models across vendors. Cloud only, and no local models ever;
-- does real work against local files, native Mac applications, and connected services;
-- keeps configuration, traces, and history on the Mac;
-- makes what it did legible after the fact.
+## Deterministic testing
 
-## 4. What it is not
+- **Implemented.** `RuntimeTesting` ships `ScriptedLanguageModel` — agent behavior
+  asserted offline, deterministically, in CI; the migrated Apple-session-semantics
+  suite (cancellation, revert-on-failure, concurrent tools, cross-provider
+  reconstruction) runs on it. *Why first-class:* agent code is ordinarily
+  untestable, and test doubles as public API is the package's sharpest DX bet.
 
-- A wrapper around one vendor's model.
-- A developer console, or a GUI for editing MCP JSON.
-- A terminal coding agent.
-- A remote desktop.
+## Known gaps, named
 
-## 5. Product principles
-
-Only what Toni has actually said. The inherited draft's principles — "task not chat,"
-"show outcomes not tool calls," effect-based approvals, partial completion — were
-removed: two were never his, and one was the reverse of what he wants.
-
-1. **Model neutrality is structural.** Not a setting bolted on at the end.
-2. **Never neuter a model.** Every capability a model has, including provider-exclusive
-   ones, is exposed. We don't cut features down to a common denominator.
-3. **Show the machinery, made friendly.** Reasoning and tool calls are visible, in
-   human terms — not hidden behind outcomes, and not dumped as raw protocol.
-4. **Keep everything, show what's useful.** Full traces are always persisted; what's
-   displayed is a view, never the limit of what was recorded.
-5. **Curate ruthlessly.** A short list of genuinely good agentic models beats a menu of
-   five thousand. The user is not a model researcher.
-6. **Calm and native.** No anthropomorphic assistant. macOS patterns, restrained color,
-   simple lists over clever surfaces.
-
----
-
-## 6. Current non-goals
-
-Explicit, so they don't get smuggled in:
-
-- Multi-user, teams, or enterprise policy.
-- A plugin marketplace.
-- Exposing local capabilities to external agents (the draft's "cloud gateway").
-- Mac App Store distribution — see ADR-0003.
-- **Locally-hosted models. Ever.** "no local models ever."
-- **Resellers and aggregators** — first-party providers only, for now.
-- A mobile or web Work Agent *companion*. An iOS app is now planned, but it belongs
-  to the runtime as a sibling reference product with its own iOS-shaped tool set —
-  see [RUNTIME.md](RUNTIME.md) §5 — not as a remote control for this Mac app.
-
----
-
-## 7. Open questions
-
-These are unresolved and blocking nothing yet. They get answered before the increment
-that depends on them.
-
-- **Background execution.** Does work survive the window closing in v1? Deciding "yes"
-  later costs a painful retrofit; deciding "yes" now costs XPC and a LaunchAgent before
-  the product is validated.
-- **OpenAI subscription sign-in (FR-067).** Toni asked for it. Anthropic's equivalent is
-  explicitly banned; OpenAI's is undocumented — neither permitted nor prohibited. The
-  "OpenAI explicitly supports this" claim comes from OpenClaw's docs and cites nothing.
-  Risk is unquantified. His call. See §1.
-- **How a non-technical user gets an API key.** The subscription plank was going to
-  solve onboarding. It's gone, and nothing replaces it yet. This is the sharpest open
-  product problem.
+Recorded honestly rather than silently skipped: no gated on-device
+`SystemLanguageModel` test yet (no eligible-device cycle); ToolKit calls aren't yet
+wrapped in `InstrumentedTool` at the app integration point (run id timing); the
+interactive send→quit→resume UI path was never human-verified; `web_search` never
+ran live. Each is a roadmap item, not a footnote.

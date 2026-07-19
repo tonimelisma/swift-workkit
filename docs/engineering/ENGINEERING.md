@@ -6,16 +6,17 @@ change: 2026-07-19.
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
 
-For *why* a choice was made, read the ADR. This doc says what is true now;
-[docs/decisions/](../decisions/) says why and what we rejected.
+This doc says what is true now AND why it was decided that way -- the rationale for
+every structural choice lives in "Why it is built this way" below (app-side
+rationale: docs/app/APP.md). There is no separate decisions log.
 
 ---
 
 ## Current reality
 
 The app runs on a durable three-layer runtime: **AgentKit** (a local Swift package,
-ADR-0002/ADR-0006's one deliberate package boundary) under the **Work Agent** macOS app.
-A conversation is a `ConversationRecord` (SwiftData, ADR-0008), listed in a sidebar
+the one deliberate package boundary; rationale in "Why it is built this way" below) under the **Work Agent** macOS app.
+A conversation is a `ConversationRecord` (SwiftData; rationale in docs/app/APP.md), listed in a sidebar
 (FR-071); sending a message drives one durable run through `TaskCoordinator`, streaming
 into the message live; a run in flight when the app quits pauses at its next checkpoint
 and offers an explicit resume on relaunch (FR-072); the active provider fails over
@@ -36,7 +37,7 @@ AgentKit (see `git log` for its history) rather than living on as a second, drif
 implementation.
 
 ```
-AgentKit/                                    local SPM package (ADR-0002, ADR-0006)
+AgentKit/                                    local SPM package (see Why below)
   Package.swift                              name "AgentKit" — working label, not final
   Sources/
     ToolVocabulary/                          ToolAnnotations, effect/budget value types
@@ -88,7 +89,7 @@ Work Agent/
     AddProviderSheet.swift       pick provider, paste key, verify, add
   Chat/
     Conversation.swift           ChatMessage/ChatRole — wire and display shape
-    ConversationRecord.swift     SwiftData @Model (ADR-0008), one per conversation
+    ConversationRecord.swift     SwiftData @Model (APP.md), one per conversation
     ConversationsStore.swift     sidebar selection + create/delete
     RuntimeEnvironment.swift     injects Keychain+registry into AgentKit; owns run
                                  lifetime keyed by conversation (FR-071)
@@ -107,27 +108,27 @@ docs/                            specs
 |---|---|---|
 | Language | Swift, MainActor-default isolation | Native macOS is the point |
 | UI | SwiftUI (`@Observable`) | — |
-| Tests | swift-testing | ADR-0004 |
-| Structure | Work Agent app + one local AgentKit SPM package (RuntimeCore, Executors, ToolVocabulary, RuntimeTesting) | ADR-0002, ADR-0006 |
-| App persistence | SwiftData (`ConversationRecord`) | ADR-0008 |
-| Distribution | Developer ID, notarized; **App Sandbox off**, Hardened Runtime on | ADR-0003 |
-| Provider chat/inference | AgentKit `Executors`, driven by `RuntimeCore.TaskCoordinator` | ADR-0006, ADR-0007 |
-| Model registry | models.dev, bundled + refreshed | ADR-0005 |
-| Agent runtime (tools/loop) | `TaskCoordinator` above `LanguageModelSession`; durable journal + checkpoints | ADR-0006 |
-| Min macOS | **27.0** | NFR-009, ADR-0006 |
-| Runtime package platforms | **iOS 27 and macOS 27**, both build and test green | NFR-010, ADR-0006 |
+| Tests | swift-testing | Why below |
+| Structure | Work Agent app + one local AgentKit SPM package (RuntimeCore, Executors, ToolVocabulary, RuntimeTesting) | Why below |
+| App persistence | SwiftData (`ConversationRecord`) | docs/app/APP.md |
+| Distribution | Developer ID, notarized; **App Sandbox off**, Hardened Runtime on | docs/app/APP.md |
+| Provider chat/inference | AgentKit `Executors`, driven by `RuntimeCore.TaskCoordinator` | Why below |
+| Model registry | models.dev, bundled + refreshed | docs/app/APP.md |
+| Agent runtime (tools/loop) | `TaskCoordinator` above `LanguageModelSession`; durable journal + checkpoints | Why below |
+| Min macOS | **27.0** | NFR-009, Why below |
+| Runtime package platforms | **iOS 27 and macOS 27**, both build and test green | NFR-010, Why below |
 | Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella'd as `ToolKitForMac` | FR-074–083, tool-architecture.md |
 | Tool dependencies | ZIPFoundation (.docx is a zip), SwiftSoup (HTML→Markdown) — the only two external dependencies anywhere in AgentKit, both pre-approved pure Swift | tool-architecture.md §6 |
 
 **App Sandbox is off.** The Xcode template enabled it; it blocked all outbound network,
 which is fatal for an app whose whole job is calling provider APIs. Disabling it realizes
-ADR-0003 (Developer ID precisely *because* the sandbox forbids what the product needs).
+the Developer ID decision (docs/app/APP.md: Developer ID precisely *because* the sandbox forbids what the product needs).
 Hardened Runtime stays on for notarization. Networking-and-data types are marked
 `nonisolated` since the project defaults to MainActor isolation.
 
 ## Architecture
 
-The one structural seam ADR-0002 accepts is real now: **AgentKit**. The app never
+The one structural seam the package design accepts (Why below) is real now: **AgentKit**. The app never
 constructs a `URLRequest` to a model provider directly — it builds a concrete
 `LanguageModel` (`OpenAICompatibleModel` or `AnthropicModel`) and hands it, plus tools
 and instructions, to `runSessionAttempt`, which is the only place a `LanguageModelSession`
@@ -229,3 +230,61 @@ needs them, with an ADR if there's a genuine alternative.
 No tool selection/approval policy, no MCP, no `ask_user`/`update_plan`/`web_search`
 app wiring, no `InstrumentedTool` at the app integration point — named in REQUIREMENTS.md
 against FR-080/081/083, not silently deferred.
+
+---
+
+## Why it is built this way
+
+The rationale record (absorbed from the former ADRs; app-side rationale — Developer
+ID distribution, models.dev registry, SwiftData — moved to docs/app/APP.md).
+
+### Three layers: Foundation Models under a durable runtime under the host
+
+Apple's OS 27 `LanguageModel`/`LanguageModelExecutor`/`LanguageModelSession`/
+`Transcript` surface *is* the neutral intelligence-session layer we would otherwise
+have built. A bounded POC proved the architecture with live two-request tool cycles
+through real Apple sessions for DeepSeek, Google, and Anthropic, plus a live
+cross-provider switch. Rejected alternatives: a fully custom loop over our own
+message types (duplicates Apple's transcript/schema/session and forks the ecosystem
+the package sells to); embedding a TS/Python framework as a subprocess (bundled
+runtime in a notarized app, IPC around every Swift tool); a normalization proxy
+(flattens provider-specific capability — the opposite of the fidelity promise);
+Foundation Models as the *whole* runtime (a Codable transcript is not durable
+execution — no checkpoints, restart-safe interrupts, or attempt identity). Honest
+caveat, kept on purpose: for the app alone a custom loop would also have served;
+Apple's protocol won because this package's market is Foundation Models developers.
+The falsifier and retreat path are recorded in ROADMAP's vision preamble.
+
+### Two executors, not eleven
+
+Ten curated providers share the OpenAI-compatible wire format; one executor with
+per-provider presets covers them all. Anthropic gets a native Messages executor
+because compatibility shims lag exactly the capabilities that matter, and Anthropic
+is the single most important provider to get right. We keep our own Anthropic
+executor even though Anthropic ships a Foundation Models package: theirs assumes
+proxy-backend auth (vs. our local BYOK keys), is beta and closed to contributions,
+and failover requires knowing precisely where provider state lives. Known cost we
+accepted: we own wire drift (base paths, reasoning field renames, dual endpoints),
+and staleness is silent until a provider breaks — the conformance suite is the
+drift detector.
+
+### One package, many small products
+
+Swift's unit of encapsulation is the module; the package is the unit of versioning.
+Pre-1.0, everything co-evolving against a beta OS shares one package so releases
+stay atomic (separate packages would need coordinated releases on every Apple ABI
+change — it already broke once between beta seeds). No module is allowed a second
+job; the product DAG in plans/runtime-api.md §6 is the contract. ToolKit products
+depend only on FoundationModels + ToolVocabulary, never RuntimeCore, so tools work
+with any model package and no runtime. A repo/package split happens when release
+cadences demonstrably diverge or an external consumer needs a piece standalone —
+an event, not a prediction.
+
+### swift-testing with requirement IDs in display names
+
+IDs go in test display names and `// REQ:` comments at the point of satisfaction;
+`rg FR-xxx` finds the feature record (PRODUCT.md), the code, and the tests. Chosen
+over per-requirement `@Tag`s (a declaration per ID forever, for filtering nobody
+has needed) and over a traceability matrix (a third artifact that goes stale first).
+No UI tests, permanently: slow, flaky, and they test the wrong layer — coverage is
+unit and contract, acceptance is running the thing.

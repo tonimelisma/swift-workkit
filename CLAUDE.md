@@ -1,273 +1,156 @@
-# Work Agent — Working Agreement
+# AgentKit — Working Agreement
 
-Native macOS app: an AI agent that does real work on the user's Mac, for people who
-are not developers and not power users.
+This repo is a native Swift SPM package: an agent runtime, provider executors, and
+native tool implementations on top of Apple's Foundation Models framework (macOS 27 /
+iOS 27). The Work Agent macOS app still lives here but is moving to its own repo —
+[docs/plans/app-carveout.md](docs/plans/app-carveout.md) — and is not this repo's
+subject. MIT licensed, Toni Melisma.
 
-**The thesis:** every competing agent is welded to one vendor's model. We bet inference
-commoditizes and the durable value is at the app layer. Model neutrality is not a
-feature of this product — it is the reason it exists. Any decision that quietly
-couples us to one provider is wrong by default.
+**The thesis:** the Swift model-access layer is commoditizing (Apple's protocol,
+vendor packages, community clones); the durable work layer above it is empty. We
+build that layer, model-neutral and local-first, with the Work Agent apps as the
+canonical reference implementations.
 
 ---
 
-## The docs
+## The process
 
-Read the ones your increment touches. Do not read all of them by reflex.
+A one-way pipeline. Each step has one input and one output document. Work flows
+forward only; documents never share a role.
 
-| Doc | Answers | Rule |
+```
+                 ┌──────────────┐
+  strategy ────▶ │ 1 research/  │ ◀──── anything learned during any step
+                 └──────┬───────┘
+                        ▼
+                 ┌──────────────┐   future only: prioritized features & vision.
+  refinement ──▶ │ 2 ROADMAP.md │   The only place work is picked from.
+                 └──────┬───────┘
+                        ▼
+                 ┌──────────────┐   a smarter agent turns the top roadmap items
+  planning ────▶ │ 3 plans/     │   into codebase- and research-verified plans
+                 └──────┬───────┘   detailed enough to implement without questions
+                        ▼
+                 ┌──────────────┐   a cheaper agent implements a plan, then writes
+  execution ───▶ │ 4 the code   │   down what now exists:
+                 └──────┬───────┘
+                        ▼
+        ┌───────────────┴───────────────┐
+        ▼                               ▼
+ ┌──────────────┐              ┌────────────────┐
+ │ 5 PRODUCT.md │              │ 6 ENGINEERING  │   implemented product features     /
+ │  implemented │              │  implemented   │   implemented architecture,
+ │  features +  │              │  design + why  │   with rationale for every
+ │  why, w/ IDs │              │  it works so   │   decision made
+ └──────────────┘              └────────────────┘
+                        ▼
+                 ┌──────────────┐   a smarter agent audits the built work against
+  review ──────▶ │ 7 top-up     │   the plan and PRODUCT/ENGINEERING; findings
+                 │   plans/     │   become top-up plans and new ROADMAP items
+                 └──────────────┘
+```
+
+**Step by step:**
+
+1. **Research** (`docs/research/`) — produced whenever something is learned the hard
+   way, in strategy *or* execution. Topic-named, living, last-verified dates,
+   evidence not just conclusions. Input: the outside world. Output: a doc nobody has
+   to re-derive.
+2. **Roadmap** (`docs/product/ROADMAP.md`) — the future, and only the future:
+   features and vision in priority order, each item with enough words to plan from,
+   traceable to Toni. No status log, no history — a shipped item is deleted from the
+   roadmap (PRODUCT.md now owns it). Input: strategy sessions + review findings.
+   Output: an ordered backlog.
+3. **Planning** (`docs/plans/`) — a smarter agent takes the top roadmap item(s) and
+   writes an implementation plan: verified against the actual codebase and the
+   research, specific enough that the implementing agent needs no product judgment.
+   The plan is the quality gate — there is no separate DOR ceremony. Open questions
+   that need Toni are resolved *while planning*, not left in the plan. Input:
+   roadmap item + codebase + research. Output: an executable plan.
+4. **Execution** — a cheaper agent implements the plan in a worktree with a PR
+   (doc-only changes go straight to main). Blocked or surprised → stop and say so;
+   never improvise product decisions.
+5. **Product record** (`docs/product/PRODUCT.md`) — the implementer documents each
+   shipped feature: what it does, its permanent FR/NFR IDs, and *why it was built
+   this way*, quoting Toni where he decided. Implemented only.
+6. **Engineering record** (`docs/engineering/ENGINEERING.md`) — the implementer
+   updates the as-built architecture: how it works and the rationale for every
+   structural decision (this doc absorbed the old ADRs; there is no separate
+   decisions log). Reality only, never aspiration.
+7. **Review** — a smarter agent audits the last N increments: code vs plan vs
+   PRODUCT/ENGINEERING claims. Findings become top-up plans in `plans/` and/or new
+   roadmap items. Output: errata the pipeline consumes like any other work.
+
+After execution the consumed plan is **deleted** — its content now lives in code,
+PRODUCT, and ENGINEERING. Plans directory always contains only the unimplemented.
+
+**The five documents, one line each:**
+
+| Doc | Role | Tense |
 |---|---|---|
-| [docs/product/PRODUCT.md](docs/product/PRODUCT.md) | What are we building, for whom, why, and what are we *not* building | Changes when the product bet changes |
-| [docs/product/RUNTIME.md](docs/product/RUNTIME.md) | The second product: the agent-runtime SPM — who it serves, the layer bet, capabilities, non-goals | Changes when the runtime's product bet changes |
-| [docs/product/REQUIREMENTS.md](docs/product/REQUIREMENTS.md) | What must be true, testably, with IDs | Changes every increment that adds or alters behavior |
-| [docs/product/ROADMAP.md](docs/product/ROADMAP.md) | What order, and what's deliberately deferred | Changes when sequencing changes |
-| [docs/engineering/ENGINEERING.md](docs/engineering/ENGINEERING.md) | How the system is built *right now* | Always reflects reality — never aspiration |
-| [docs/decisions/](docs/decisions/) | Why we chose this over the alternatives | Kept up to date and MECE; updated when the decision changes, deleted when stale |
-| [docs/research/](docs/research/) | What we learned from outside this repo | Living — update in place, don't append journal entries |
-| [docs/plans/](docs/plans/) | What we intend to build and how, in enough detail to start | A proposal until its increment's DOR; decisions recorded in place as Toni makes them |
+| [docs/research/](docs/research/) | What we learned, with evidence | timeless |
+| [docs/product/ROADMAP.md](docs/product/ROADMAP.md) | Vision and features we intend to build, prioritized | future only |
+| [docs/plans/](docs/plans/) | Verified implementation plans for the top roadmap items | future only, deleted on completion |
+| [docs/product/PRODUCT.md](docs/product/PRODUCT.md) | Features that exist, their IDs, and why they're shaped this way | past only |
+| [docs/engineering/ENGINEERING.md](docs/engineering/ENGINEERING.md) | Architecture that exists and the rationale behind it | past only |
 
-**ENGINEERING.md vs ADRs** is the distinction people get wrong. ENGINEERING.md says
-*what is true now*; an ADR says *why we chose it*, with the alternatives and their
-tradeoffs. Both are living: when a decision changes, its ADR is updated in place, and
-an ADR whose decision no longer matters is deleted. Git history is the archive —
-nothing in the working tree exists to memorialize a dead decision.
-
-These docs are MECE. If a fact belongs in two of them, it belongs in one and is linked
-from the other. Duplicated facts drift and then lie.
-
-**How the docs flow.** Vision (PRODUCT, RUNTIME) → design (plans) → **the DOR is the
-minting moment**: plan content becomes requirements with FR IDs there, from Toni's
-words, never before → code and tests carry the IDs → the DOD flips `Specified` to
-`Implemented` and updates ENGINEERING.md to the new reality. Two rules that keep the
-flow honest:
-
-- **ROADMAP syncs on scope, not on design.** A doc change that alters what an
-  increment delivers or in what order updates ROADMAP in the same commit; a design
-  change inside an increment's existing scope doesn't touch it.
-- **Plans die by absorption.** When an increment implements part of a plan, that part
-  is deleted from the plan in the increment's DOD — its facts now live in
-  ENGINEERING.md and REQUIREMENTS.md, and a plan section describing built reality is
-  stale by definition. What remains in a plan is always and only the unbuilt.
+Docs are MECE: a fact lives in exactly one place and is linked from the others. No
+stale references, ever — the change that invalidates a mention scrubs it in the same
+commit. Git history is the only archive; nothing in the working tree memorializes a
+dead decision.
 
 ---
 
 ## Non-negotiables
 
-0. **Never invent a requirement.** Every requirement traces to something Toni actually
-   said. Not to something he implied, not to a reasonable inference from what he said,
-   not to what a sensible product would obviously need. If he hasn't said it, it is an
-   **open question**, and open questions go in a list and get asked — they do not get
-   written down as requirements and then quietly become true.
-
-   This has already gone wrong once. FR-002 required a locally-hosted open model because
-   Toni said "maybe there's a great cheap open source model that will do the trick," and
-   an agent turned *open-source model* into *locally-hosted model*. He then had to argue
-   against his own spec to correct a thing he never said. That is the failure this rule
-   exists to prevent, and it is exactly what made the original inherited draft worthless.
-
-   A fabricated requirement is worse than a missing one. A missing requirement is a
-   question. A fabricated one is a lie with an ID that code gets written against.
-
-   When drafting a requirement from a conversation, quote the words it came from. If you
-   can't, you're inventing.
-
-1. **Specs are the source of truth, and they lose to you.** If a requirement or ADR
-   contradicts what Toni just asked for, that is not a blocker and not an argument.
-   Surface it as a clarification — "this contradicts FR-062 / ADR-0003, are we changing
-   that decision?" — and if the answer is yes, update the spec *in the same increment*.
-   Never leave code and spec disagreeing. Never use a spec to refuse a request.
-
-   **But first check the spec is real.** Before telling Toni his request contradicts a
-   requirement, confirm that requirement came from him. If it didn't, the contradiction
-   is fiction and raising it wastes his time defending a position he never took.
-
-2. **Every behavior change updates the requirements.** No exceptions, including for
-   changes that feel too small to document. A requirement that describes last month's
-   behavior is worse than no requirement.
-
-3. **Requirements have IDs and code points back.** See Traceability below.
-
-4. **Research gets written down without being asked.** Any external lookup or POC that
-   took real work — API availability, performance measurements, whether a framework can
-   actually do the thing — produces or updates a doc in `docs/research/`. The test is:
-   *would we have to redo this work to know it again?* If yes, write it. Trivial lookups
-   stay in the transcript.
-
-5. **Prefer larger increments.** The process below has fixed overhead. Amortize it. An
-   increment should be a meaningful, deliverable slice — not a chore.
-
----
+0. **Never invent direction.** Roadmap items, plan decisions, and product claims
+   trace to something Toni actually said — quoted, not inferred. What he hasn't
+   decided is an open question to ask during planning, never a thing to write down
+   and let become true. A fabricated decision is worse than a missing one.
+1. **Docs lose to Toni.** If any doc contradicts what he just asked for, surface the
+   contradiction in one sentence and, on his confirmation, update the doc in the
+   same increment. Never use a doc to refuse a request — but first check the doc's
+   claim actually came from him.
+2. **Everything shipped is recorded.** No feature lands without its PRODUCT.md entry
+   and ID; no structural choice lands without its ENGINEERING.md rationale. A record
+   describing last month's behavior is worse than none.
+3. **Research is written without being asked** whenever redoing the work would cost
+   real effort. Trivial lookups stay in the transcript.
+4. **Honest reports.** Gaps are named, never silently skipped. Tests that didn't run,
+   features not exercised live, keys nobody had — say so in the PR and the docs.
 
 ## Traceability
 
-Requirements use flat, prefixed, permanent IDs: `FR-001` (functional), `NFR-001`
-(non-functional). **IDs are never reused and never renumbered.** A dropped requirement
-is **deleted outright** — no tombstone rows, no "Removed" status lingering in the doc.
-Git history is the archive; REQUIREMENTS.md records the next-free ID counters so a
-dead number is never handed out again. Renumbering breaks every reference in the
-codebase, which is the whole failure mode we're avoiding.
-
-**No stale references, ever.** The increment that drops or changes a requirement
-scrubs every mention of it — ROADMAP, ENGINEERING.md, plans, code comments, tests —
-in that same increment. All docs are always up to date; a doc citing a dead ID is a
-bug, not a historical curiosity. ADRs included — they are kept up to date like
-everything else.
-
-In code, at the point where the requirement is actually satisfied:
+Permanent, flat IDs: `FR-001` / `NFR-001`, minted during planning from Toni's words,
+recorded in PRODUCT.md when implemented. **Never reused, never renumbered**; dropped
+IDs are deleted outright and PRODUCT.md tracks the next-free counters. In code, at
+the point of satisfaction:
 
 ```swift
-// REQ: FR-001 — provider adapters are selected at runtime, never compiled in.
+// REQ: FR-006 — failed provider attempts fail over automatically; the switch is traced.
 ```
 
-In tests, the ID goes in the display name so it's greppable with zero ceremony:
-
-```swift
-@Test("FR-001: selecting a provider does not require a rebuild")
-func providerSelectionIsRuntime() async throws { ... }
-```
-
-We deliberately do **not** declare a Swift Testing `@Tag` per requirement. Tags would
-give us `--filter` by requirement, but cost a tag declaration per ID forever. If we
-later want filtering badly enough to pay that, an ADR revisits it.
-
-Grep is the traceability tool: `rg "FR-001"` finds the requirement, the code, and the
-tests. If it finds only the requirement, the requirement is unimplemented — that is a
-signal, not a bug in the scheme.
+In tests, the ID goes in the display name. `rg "FR-006"` finds the feature record,
+the code, and the tests — grep is the whole traceability system.
 
 ## Local provider credentials
 
-The repository-root `.env` is the established local-development credential source and
-is ignored by Git. It currently supplies `DEEPSEEK_API_KEY`, `GOOGLE_API_KEY`, and
-`ANTHROPIC_API_KEY` for live provider probes.
-
-- Before reporting that a key is unavailable, check its assignment in `.env` with a
-  non-printing presence test. The key may not be exported in the current process.
-- Source `.env` in the invoking shell for an authorized live probe. Never print keys,
-  include them in command output, persist them in fixtures, or copy them into traces.
-- Scrub recorded provider traffic before committing it; retain structural evidence,
-  not authorization headers or user-specific content.
-- Keep authentication evidence separate from runtime evidence. A present, working API
-  key proves provider access; it cannot fix an SDK/OS linker mismatch or prove that an
-  Apple `LanguageModelExecutor` can run.
-
----
-
-## Increment workflow
-
-An increment is one unit of deliverable work. **Code increments** use a worktree and a
-PR. **Doc-only increments** commit straight to main — no worktree, no PR — since they
-can't break anyone else's build.
-
-### Doc increments: the lightweight path
-
-Doc increments skip the full DOR/DOD ceremony below — that machinery exists to stop
-code being built on unverified assumptions, and a doc can't ship a bug to a build.
-What replaces it:
-
-**Gate (one question):** did Toni ask for this, and is what he asked for clear? An
-explicit request for research or a doc *is* the go-ahead — no separate DOR post, no
-waiting. Anything beyond what he asked for is an open question to ask, not a thing to
-write (Non-negotiable 0 applies to docs with full force — it was invented for one).
-
-**Done (short report, honest):**
-- Content traces to what was actually said, read, or measured — sources named,
-  Toni's words quoted where they're the authority
-- MECE holds: each fact lives in one doc and is linked from the others
-- Indexes and cross-references updated (research README, this file's doc table)
-- Committed straight to main, and anything stale the work uncovered is flagged
-  rather than silently left
-
-Everything below this line is the **code-increment** process.
-
-### Before starting: Definition of Ready
-
-**Post the DOR, then proceed.** No separate go-ahead post, no waiting turn — Toni
-asking for the increment (or for the standing list of increments) is the authorization.
-Posting the list is still mandatory: it's how a bad assumption gets caught before code
-gets written on top of it, not a courtesy notice to skip.
-
-If any item is ❌ or ⚠️, that is the thing to resolve before proceeding — it is never a
-thing to note and proceed past regardless.
-
-- ✅/❌ **Every requirement in play traces to something Toni said** — quote it. Requirements
-  I inferred are open questions, not requirements. See Non-negotiable 0.
-- ✅/❌ The requirement is clear, and we know which FR/NFR IDs are in play (new or existing)
-- ✅/❌ We know which specs change: requirements, ENGINEERING.md, which ADRs
-- ✅/❌ Any decision with real alternatives has an ADR planned, not an assumption
-- ✅/❌ We have read the affected code paths and can say concretely how they change
-- ✅/❌ Research needed to make this decision is done, or is explicitly this increment's first step
-
-An open question surfaced by a ❌ still gets asked, even mid-increment — this section
-removes the standing approval checkpoint, not Non-negotiable 0.
-
-Don't fake a ✅. A ❌ with a sentence about why is the point of the list.
-
-### During
-
-The DOR comes first. Only once it's clear and the work begins does the rest of this run —
-starting with the review backlog.
-
-**First task of the work: triage open review comments.**
-
-1. Read the review comments on the **last 10 PRs** (`gh pr list --state all --limit 10`,
-   then `gh api` per PR). A comment is **unclaimed** if nobody has replied to take it.
-2. **Claim each one you'll act on by replying to it** — so parallel agents don't collide.
-3. **Fix them properly. No band-aids.** A review comment is a defect in the design or the
-   code; the fix addresses the cause, not the symptom. If a comment is wrong or stale,
-   reply saying why you're not acting — don't silently skip it.
-4. Fixes ride in this increment's normal commits and specs (a behaviour change updates
-   requirements, etc.). Empty backlog: say so in one line and move on.
-
-Then the increment's actual work:
-
-```bash
-git worktree add ../wa-<slug> -b <slug>    # code increments only
-```
-
-Work in the worktree. Doc-only increments that won't collide with another agent skip
-this entirely and commit to main.
-
-### Before finishing: Definition of Done
-
-Post this list with ✅/❌ per item. A ❌ needs a sentence saying why it's acceptable —
-or it isn't done.
-
-- ✅/❌ The deliverable works, and I verified it by running it — not by inferring from tests
-- ✅/❌ Tests written for the new requirement IDs, and the full suite is green (paste the result)
-- ✅/❌ Requirements updated: new IDs added, changed IDs edited, dropped requirements deleted and every reference to them scrubbed
-- ✅/❌ ENGINEERING.md reflects reality after this change
-- ✅/❌ ADRs written for decisions made; ADRs whose decision changed updated in place; stale ADRs deleted
-- ✅/❌ Research docs written or updated for anything learned the hard way
-- ✅/❌ CLAUDE.md updated if the process itself changed
-- ✅/❌ Code references its requirement IDs
-- ✅/❌ Review comments claimed this increment are fixed at the cause, and annotated with
-  where — done after merge (see First: triage open review comments)
-
-Then:
-
-```bash
-gh pr create ...          # code increments
-# squash merge, delete branch
-git worktree remove ../wa-<slug>
-git branch -d <slug>
-# then: reply to each claimed review comment with where it was fixed
-```
-
-Report the DOD list honestly. A red ❌ that's explained is useful. A green ✅ that's
-wrong destroys the value of every other line.
-
----
+The repository-root `.env` (gitignored) supplies provider API keys for live probes
+and gated smoke tests. Check a key's presence with a non-printing test before
+reporting it unavailable; source `.env` in the invoking shell for authorized live
+probes. Never print keys, persist them in fixtures, or copy them into traces; scrub
+recorded provider traffic before committing.
 
 ## Conventions
 
-- Swift, SwiftUI, `swift-testing`. One macOS app target plus one native Swift
-  agent-runtime SPM package supporting iOS 27 and macOS 27 Foundation Models. No other
-  packages are introduced until a concrete seam earns them. See ADR-0002 and ADR-0006.
-- **Never add UI tests.** The project has no UI-test target and will not gain one;
-  acceptance is verified by running the app, while automated coverage stays unit and
-  contract-level.
-- Distribution is Developer ID + notarized, never Mac App Store. The sandbox would
-  forbid most of what this product does. See ADR-0003.
-- Never present MCP, tool schemas, JSON-RPC, OAuth scopes, or AXUIElement to the user.
-  They are implementation. Users see work, sources, actions, and approvals.
+- Swift 6, strict concurrency, swift-testing. One SPM package (many small products —
+  module = encapsulation, package = versioning); the app targets leave with the
+  carve-out. Dependencies: Apple frameworks only, except ZIPFoundation, SwiftSoup,
+  and (opt-in) the MCP swift-sdk.
+- **Never add UI tests.** Coverage is unit and contract level; acceptance is
+  verified by running things.
+- Code increments: worktree + PR, squash merge, delete branch. Doc-only increments:
+  straight to main.
+- No secrets in commits. No telemetry anywhere in the package.
 
 `AGENTS.md` is a symlink to this file.

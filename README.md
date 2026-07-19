@@ -199,19 +199,17 @@ libraries and serve as their reference implementations.
 
 ## Documentation
 
-| Doc | What it answers |
+| Doc | What it holds |
 |---|---|
-| [RUNTIME.md](docs/product/RUNTIME.md) | The product north star: the layer bet, capabilities, evidence and falsifiers |
-| [ROADMAP.md](docs/product/ROADMAP.md) | Increment order and the horizon |
-| [REQUIREMENTS.md](docs/product/REQUIREMENTS.md) | What must be true, testably, with permanent IDs |
-| [ENGINEERING.md](docs/engineering/ENGINEERING.md) | How the system is built *right now* — reality, never aspiration |
-| [Architecture decisions](docs/decisions/) | Why each choice over its alternatives — living ADRs |
+| [ROADMAP.md](docs/product/ROADMAP.md) | The future: vision and features we intend to build, in priority order |
+| [PRODUCT.md](docs/product/PRODUCT.md) | The implemented product: every shipped feature, its ID, and why it's shaped this way |
+| [ENGINEERING.md](docs/engineering/ENGINEERING.md) | The implemented architecture and the rationale behind every structural decision |
 | [Research](docs/research/README.md) | What we learned outside this repo, with evidence and dates |
-| [Working agreement](CLAUDE.md) | How this repo is run |
-| [PRODUCT.md](docs/product/PRODUCT.md) | The Work Agent app (moving to its own repo) |
+| [Working agreement](CLAUDE.md) | The process: research → roadmap → plans → code → product/engineering records → review |
 
-Design proposals in flight live in [docs/plans/](docs/plans/) — working
-documents, binding only once confirmed at an increment's definition-of-ready.
+Implementation plans for the top roadmap items live in [docs/plans/](docs/plans/)
+and are deleted as they're built. App-specific docs are parked in
+[docs/app/APP.md](docs/app/APP.md) until the app moves to its own repo.
 
 ## License
 

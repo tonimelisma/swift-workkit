@@ -10,7 +10,7 @@ The local comparison targets are:
 - [the tool architecture](../plans/tool-architecture.md);
 - [the agent-loop runtime research](agent-loop-runtimes.md);
 - [the Foundation Models adaptation research](foundation-models-adaptation.md);
-- [ADR-0006](../decisions/0006-native-swift-agent-loop.md); and
+- ADR-0006 (absorbed into ENGINEERING.md "Why"); and
 - the code that exists today: streaming chat through `ChatProvider`, with no agent
   loop or tool runtime implemented yet.
 
