@@ -16,7 +16,7 @@ Each library stands alone, and every dependency is an Apple framework.
 
 | Library | What it gives you | Depends on |
 |---|---|---|
-| **Executors** | Ten cloud providers as `LanguageModel`s — OpenAI-compatible ×9 and Anthropic native. Provider wire quirks handled, and provider capabilities *beyond* the FM API exposed: typed options for cache control, server-side tools, and thinking budgets; direct clients for non-conversational APIs | FoundationModels |
+| **Executors** | Ready Foundation Models providers for the popular cloud LLMs that don't ship their own — GPT, DeepSeek, Grok, Kimi, Qwen, and more via one OpenAI-compatible executor, plus Anthropic native. Wire quirks handled; provider capabilities *beyond* the FM API exposed | FoundationModels |
 | **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text), web fetch, Contacts, Calendar, Reminders; Mac app control on macOS. Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
 | **RuntimeCore** | Agent runs that survive crash, relaunch, and suspension: append-only journal, checkpoints, resumable interrupts, composable run limits, retry, and cross-provider failover mid-run | FoundationModels |
 | **RuntimeTesting** | Scripted models, virtual clocks, and fixture recorders. Agent behavior asserted deterministically, no network. Never links into shipping binaries | FoundationModels |
@@ -28,9 +28,13 @@ no runtime; RuntimeTesting tests agent code that never imports RuntimeCore.
 
 ## Executors
 
-Apple's protocol makes models swappable; someone still has to put each cloud
-provider behind it. These executors do, without flattening what makes each
-provider different. DeepSeek requires its reasoning content echoed on the
+Apple's protocol makes models swappable, but as of mid-2026 only Anthropic and
+Google ship provider packages — there is no Foundation Models package for
+OpenAI, DeepSeek, xAI, Moonshot, Alibaba, MiniMax, Meta, or Zhipu. These
+executors put them all behind the protocol today: one OpenAI-compatible
+executor covers the nine providers that share that wire format, and a native
+Anthropic executor covers Claude at full fidelity. None of it flattens what
+makes each provider different. DeepSeek requires its reasoning content echoed on the
 following request; the executor does this. Gemini attaches thought signatures
 to tool calls; they round-trip. Anthropic's signed thinking blocks replay
 intact. Capabilities the FM API doesn't model — prompt caching, server-side
