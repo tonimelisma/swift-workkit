@@ -15,6 +15,7 @@ import Foundation
 import Observation
 import RuntimeCore
 import Executors
+import ToolKitForMac
 import FoundationModels
 import SwiftData
 
@@ -31,6 +32,11 @@ final class RuntimeEnvironment {
     private let store: ProviderStore
     private let registryLoader: RegistryLoader
     private var activeRuns: [UUID: ActiveRun] = [:]
+    /// REQ: FR-074–079 — the six file tools operate relative to this workspace.
+    /// There is no folder-grant model ("permissions come later"); this is a
+    /// convenience default for relative paths, not a sandbox.
+    private let workspaceRoot: URL
+    private let fileReadLedger = FileReadLedger()
 
     static let instructions = "You are Work Agent, a helpful assistant running natively on the user's Mac."
 
@@ -42,6 +48,7 @@ final class RuntimeEnvironment {
             for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
         )) ?? FileManager.default.temporaryDirectory
         let root = support.appendingPathComponent("Work Agent", isDirectory: true)
+        workspaceRoot = FileManager.default.homeDirectoryForCurrentUser
 
         let journal = (try? FileRunJournal(directory: root.appendingPathComponent("runs/journal")))
             ?? (try! FileRunJournal(directory: FileManager.default.temporaryDirectory.appendingPathComponent("journal")))
@@ -49,6 +56,22 @@ final class RuntimeEnvironment {
             ?? (try! FileCheckpointStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("checkpoints")))
         checkpoints = checkpointStore
         coordinator = TaskCoordinator(journal: journal, checkpoints: checkpointStore)
+    }
+
+    // REQ: FR-074–079, FR-082 — the increment-5 starter tools, ungated ("permissions
+    // come later"); every call still lands in the run journal via InstrumentedTool
+    // once tool wrapping is wired at the coordinator level (a follow-up, not yet
+    // done: the runID needed to wrap a tool isn't known until the run starts).
+    private var fileAndWebTools: [any Tool] {
+        [
+            ReadFileTool(root: workspaceRoot, ledger: fileReadLedger),
+            ListFolderTool(root: workspaceRoot),
+            FindFilesTool(root: workspaceRoot),
+            SearchFilesTool(root: workspaceRoot),
+            WriteFileTool(root: workspaceRoot, ledger: fileReadLedger),
+            EditFileTool(root: workspaceRoot, ledger: fileReadLedger),
+            FetchURLTool(),
+        ]
     }
 
     func isStreaming(_ conversationID: UUID) -> Bool {
@@ -260,12 +283,13 @@ final class RuntimeEnvironment {
         guard let key = try store.key(for: selection.providerID), !key.isEmpty else {
             throw ChatError.rejected
         }
+        let tools = fileAndWebTools
 
         if selection.providerID == "anthropic" {
             let model = AnthropicModel(model: selection.modelID, apiKey: key)
             return { resumeArchive in
                 try await runSessionAttempt(
-                    model: model, tools: [], instructions: Self.instructions,
+                    model: model, tools: tools, instructions: Self.instructions,
                     resuming: resumeArchive, prompt: prompt, onDelta: onDelta
                 )
             }
@@ -282,7 +306,7 @@ final class RuntimeEnvironment {
         )
         return { resumeArchive in
             try await runSessionAttempt(
-                model: model, tools: [], instructions: Self.instructions,
+                model: model, tools: tools, instructions: Self.instructions,
                 resuming: resumeArchive, prompt: prompt, onDelta: onDelta
             )
         }

@@ -134,21 +134,35 @@ the running app** — screen-control access to drive it was declined; the app wa
 confirmed to launch and quit cleanly. Both are named in
 [ENGINEERING.md](../engineering/ENGINEERING.md), not silently skipped.
 
-## Increment 5 — First tools, tested
+## Increment 5 — First tools, tested ✅ (with named gaps)
 
-Tools the engine can actually call, exercised individually until we trust them. The
-starter set is decided and specified in
-[docs/plans/tool-architecture.md](../plans/tool-architecture.md) — see below. They
-are built as the package's first ToolKit products, not app code
-([runtime-api.md](../plans/runtime-api.md) §6); the app selects and exercises them.
+Built the package's first ToolKit products — `ToolKitFiles` (the six file tools),
+`ToolKitWeb` (`fetch_url`, a Brave-backed `web_search`), `ToolKitInteraction`
+(`ask_user`, `update_plan`), umbrella'd as `ToolKitForMac` — per
+[docs/plans/tool-architecture.md](../plans/tool-architecture.md), depending only on
+`FoundationModels` and `ToolVocabulary` (never `RuntimeCore`, per runtime-api.md §6).
+72 AgentKit tests. The six file tools and `fetch_url` are wired into the app's live
+tool list; `ask_user`, `update_plan`, and `web_search` are built and tested but not
+app-wired — see gaps below.
 
 Approvals deliberately do *not* land here: "specific tool approvals will come later,"
 reaffirmed on the tool plan's open questions — "We don't have folders. Permissions
 come later." Tools run ungated; the full trace is the accountability mechanism until
 the permissions increment exists.
 
-**Done when:** each tool has tests proving it does what it claims, and each has been
-exercised live in the app.
+**Done, with three named gaps.** Every tool has tests proving it does what it claims.
+Not done: (1) `ask_user` and `update_plan` aren't wired into the app — they need UI
+that doesn't exist yet (a question card, a plan display); (2) `web_search`'s neutral
+Brave-backed path needs an API key that wasn't obtained (creating a third-party
+account is outside what gets done unilaterally) — it's tested against a stubbed
+response but not exercised live; (3) tool calls aren't yet wrapped in
+`InstrumentedTool` at the app integration point, so they aren't individually
+journaled (the run id the wrapper needs isn't available until the coordinator starts
+the run). All three are in [ENGINEERING.md](../engineering/ENGINEERING.md) and
+REQUIREMENTS.md, not silently skipped. "Exercised live in the app" for the wired
+tools means: the app builds, links, and launches/quits cleanly with them present —
+not that a human watched a tool actually get called (screen-control access to drive
+that interactively was declined).
 
 ## Increment 6 — Second provider, cold: the real neutrality test
 

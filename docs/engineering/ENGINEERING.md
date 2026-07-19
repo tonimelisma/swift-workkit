@@ -22,6 +22,14 @@ and offers an explicit resume on relaunch (FR-072); the active provider fails ov
 automatically to a designated fallback mid-run (FR-006), replaying prior turns stripped
 of the failed provider's opaque metadata.
 
+Every run also carries the increment-5 starter tools: six file tools (`read_file`,
+`list_folder`, `find_files`, `search_files`, `write_file`, `edit_file`) and `fetch_url`,
+ungated ("permissions come later") and rooted at the user's home directory.
+`ask_user`, `update_plan`, and `web_search` are built and tested as ToolKit products
+but not yet wired into the app — the first two need UI that doesn't exist yet
+(a question card, a plan display); the third needs a Brave Search API key nobody has
+supplied.
+
 The `Experiments/FoundationModelsPOC/` spike from increments 2–3 is gone: its proven
 executors, transcript archive, schema bridge, and session-semantics tests migrated into
 AgentKit (see `git log` for its history) rather than living on as a second, drifting
@@ -50,9 +58,18 @@ AgentKit/                                    local SPM package (ADR-0002, ADR-00
       StreamParsing.swift                     SSE parsers, both wire formats
     RuntimeTesting/
       ScriptedLanguageModel.swift             closure-scripted LanguageModel double
+    ToolKitFiles/                             read_file, list_folder, find_files,
+                                               search_files, write_file, edit_file
+    ToolKitWeb/                               fetch_url, web_search (Brave-backed),
+                                               NetworkSafety (SSRF host check)
+    ToolKitInteraction/                       ask_user, update_plan
+    ToolKitForMac/                            umbrella: re-exports the three above
   Tests/
     RuntimeCoreTests/                         20 tests: durability, failover, semantics
     ExecutorsTests/                           5 tests: SSE parsing, both wire formats
+    ToolKitFilesTests/                        27 tests: paging, docx, glob, read-before-write
+    ToolKitWebTests/                          13 tests: Markdown rendering, SSRF, search
+    ToolKitInteractionTests/                  6 tests: ask_user/update_plan validation
 
 Work Agent/
   Work_AgentApp.swift             App: NSApplicationDelegateAdaptor, ModelContainer
@@ -99,6 +116,8 @@ docs/                            specs
 | Agent runtime (tools/loop) | `TaskCoordinator` above `LanguageModelSession`; durable journal + checkpoints | ADR-0006 |
 | Min macOS | **27.0** | NFR-009, ADR-0006 |
 | Runtime package platforms | **iOS 27 and macOS 27**, both build and test green | NFR-010, ADR-0006 |
+| Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella'd as `ToolKitForMac` | FR-074–083, tool-architecture.md |
+| Tool dependencies | ZIPFoundation (.docx is a zip), SwiftSoup (HTML→Markdown) — the only two external dependencies anywhere in AgentKit, both pre-approved pure Swift | tool-architecture.md §6 |
 
 **App Sandbox is off.** The Xcode template enabled it; it blocked all outbound network,
 which is fatal for an app whose whole job is calling provider APIs. Disabling it realizes
@@ -135,7 +154,14 @@ which strips the failed provider's opaque metadata (FR-006). A `CancellationErro
 **Tool tracing** is `InstrumentedTool<Base>`: any plain `FoundationModels.Tool` gets
 durable invocation identity and a registered/started/completed journal trail just by
 running through the runtime — no second tool protocol (runtime-api.md §3). Increment 4
-ships the wrapper and proves the cycle; no ToolKit product exists yet (increment 5).
+shipped the wrapper and proved the cycle; **increment 5 ships the first real tools**
+(`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella'd as `ToolKitForMac`) but
+does not yet wrap them in `InstrumentedTool` at the app integration point — the run id
+`InstrumentedTool` needs isn't available until `TaskCoordinator` starts the run, so
+tool calls aren't individually journaled yet. `ToolKit*` products depend only on
+`FoundationModels` and `ToolVocabulary`, never `RuntimeCore` — a consumer can use
+`ToolKitFiles` with a vendor model package and no durable runs at all
+(runtime-api.md §6).
 
 ## Testing
 
@@ -154,27 +180,34 @@ func coordinatorFailsOverAutomatically() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-AgentKit's own suite (`swift test` inside `AgentKit/`) is 25 tests: transcript
+AgentKit's own suite (`swift test` inside `AgentKit/`) is 72 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
 (standing in for a process restart), `TaskCoordinator` success/failover/resume paths
 against plain scripted `RunAttemptExecutor` closures (no network needed to prove
-durability), `InstrumentedTool` journaling, and the migrated Apple-session-semantics
+durability), `InstrumentedTool` journaling, the migrated Apple-session-semantics
 suite (cancellation, revert-on-failure, concurrent tool scheduling, cross-provider
-transcript reconstruction) now built on the reusable `ScriptedLanguageModel` instead of
-an ad hoc per-test executor. It builds and passes on both macOS 27 and iOS 27
-(`xcodebuild ... -destination 'generic/platform=iOS'`).
+transcript reconstruction) built on the reusable `ScriptedLanguageModel`, and the
+increment-5 tools: file paging/docx/glob/regex/read-before-write (`ToolKitFilesTests`,
+using an in-memory `.docx` fixture built with ZIPFoundation rather than a committed
+binary), `fetch_url`'s Markdown rendering and SSRF host checks against a stubbed
+`URLSession` (`ToolKitWebTests`), and `ask_user`/`update_plan` validation against fake
+presenter/recorder doubles (`ToolKitInteractionTests`). It builds and passes on both
+macOS 27 and iOS 27 (`xcodebuild ... -destination 'generic/platform=iOS'`).
 
 **Live smoke tests** (`LiveSmokeTests`, app target) hit real provider APIs through
 AgentKit's production executors, gated with `.enabled(if:)` on a `TEST_RUNNER_<VAR>` key
-so normal runs skip them.
+so normal runs skip them. No equivalent live test exists for `web_search` — it needs a
+Brave Search API key nobody has supplied.
 
 **Verification gap, named honestly.** The built app was launched and quit cleanly (no
-crash, no fault-level log entry) to confirm the SwiftData/sidebar/`AppDelegate` wiring
-doesn't break at runtime. The interactive path — send a message, watch it stream, quit
-mid-run, relaunch, see the paused banner, click Resume, switch conversations mid-stream —
-was not exercised in the running app; screen-control access to drive it was declined.
-This is a real gap between "the mechanics are unit-tested" and "a human watched it work."
+crash, no fault-level log entry) with the six file tools and `fetch_url` wired into
+its live tool list, confirming the app still builds, links, and starts with them
+present. The interactive path — send a message, watch a tool actually get called and
+its result stream back, quit mid-run, relaunch, see the paused banner, click Resume,
+switch conversations mid-stream — was not exercised in the running app; screen-control
+access to drive it was declined. This is a real gap between "the mechanics are
+unit-tested" and "a human watched it work."
 
 Tests are necessary and not sufficient. The DOD asks whether the deliverable was
 actually run, because a green suite over a feature nobody exercised is how agents
@@ -193,4 +226,6 @@ No CI, no linter, no logging framework, no error taxonomy. Each is a real need, 
 each is a decision better made with code to point at. They land in the increment that
 needs them, with an ADR if there's a genuine alternative.
 
-No ToolKit products, no tool selection/approval policy, no MCP — increment 5.
+No tool selection/approval policy, no MCP, no `ask_user`/`update_plan`/`web_search`
+app wiring, no `InstrumentedTool` at the app integration point — named in REQUIREMENTS.md
+against FR-080/081/083, not silently deferred.

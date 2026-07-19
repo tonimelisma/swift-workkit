@@ -1,11 +1,10 @@
 # Plan: the tool layer — native tools and MCP, modular
 
-**Status: proposal, 2026-07-17.** Toni asked for this plan ("explain what a flexible
-tool API for the current macOS app could look like… create a detailed plan to
-implement all of these"). It is not an increment in flight: no FR IDs are assigned
-here, and building any phase still requires its own DOR with explicit go-ahead
-(CLAUDE.md). Where this plan needs a requirement that doesn't exist yet, it says so
-under **Open questions** instead of inventing one.
+**Status: increment 5 built 2026-07-19** (MCP, office formats beyond docx, and
+approvals remain proposals — see §4/§5). Toni asked for this plan ("explain what a
+flexible tool API for the current macOS app could look like… create a detailed plan
+to implement all of these"). FR-074–083 (REQUIREMENTS.md) trace to the decisions
+recorded here; ENGINEERING.md describes the resulting code.
 
 **Update 2026-07-17:** Toni answered four of the open questions; his words are quoted
 inline where each lands. The biggest correction: this plan originally scoped all file
@@ -374,5 +373,7 @@ recommendations):
 Nothing in this plan now requires shipping a foreign binary: SwiftSoup, the MCP
 swift-sdk, and ZIPFoundation (docx) are all pure Swift.
 
-No questions remain open. The next conversation this plan needs is a DOR for
-whichever increment builds its first phase.
+No questions remain open. Increment 5 (2026-07-19) built the file tools, `fetch_url`,
+`web_search`, `ask_user`, and `update_plan` — see ENGINEERING.md for what shipped and
+what's still gapped (app wiring for the interaction/search tools). MCP (§4) and
+office formats beyond docx remain proposals for a later increment.
