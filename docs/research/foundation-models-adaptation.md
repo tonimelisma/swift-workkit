@@ -212,8 +212,18 @@ migration.
 Apple's `Tool` has name, description, parameter schema, and `call(arguments:)`. It has
 no effect annotations, workspace/context injection, output budget, trace recorder,
 read ledger, approval policy, idempotency, resource key, or model-visible error class.
-The Work Agent tool protocol remains valuable. An adapter should expose each Work
-Agent tool as an Apple tool and route invocation back through `ToolRunner`.
+
+**Read from the beta-3 swiftinterface (2026-07-18):** the protocol is five
+requirements with three defaulted — `description` and `call` are the only mandatory
+ones (`name` defaults to the type name; `parameters` derives from `@Generable`
+arguments; scalar argument types are explicitly `unavailable`), and there is **no
+metadata slot of any kind**. Sessions take `[any Tool]`, so the runtime can hand the
+session generic delegating wrappers. Consequence, adopted as the north-star design
+in [../plans/runtime-api.md](../plans/runtime-api.md) §3: interception (trace,
+budget, timeout, corrective error handling) needs no developer-facing API at all,
+and effect/idempotency metadata travels as *data* (`ToolAnnotations`, with an MCP
+hint mapping) rather than as a second tool protocol. This supersedes the earlier
+"richer host tool contract bridged to Apple's Tool" recommendation above.
 
 ### Interrupts and approvals that survive restart
 

@@ -59,8 +59,18 @@ axes as separate concepts** for when shell/exec eventually lands.
 
 ## 2. The core abstraction
 
-One host protocol, everything is an instance of it — built-ins and MCP tools alike.
-The protocol, runner, effect/resource metadata and Apple bridge live in the native
+**Superseded in part, 2026-07-18:** the separate host tool protocol sketched below
+is replaced by the north-star tool design in [runtime-api.md](runtime-api.md) §3 —
+tools are plain `FoundationModels.Tool`s; the runtime instruments them via generic
+wrappers and carries effects/idempotency as `ToolAnnotations` data (policy table →
+modifier → optional refinement conformance → MCP hints → conservative default).
+What survives from this section unchanged: the runner pipeline (§ trace-before-
+budget below), the output budgets, the effect taxonomy's *content*, and every
+per-tool implementation spec in §3. The increment that builds the tool host
+rewrites this section to match.
+
+One host contract, everything runs through it — built-ins and MCP tools alike.
+The runner, effect/resource metadata and Apple bridge live in the native
 Swift runtime SPM package. Product-specific tool implementations and authorization
 policy stay in the Work Agent app and conform through the package's public API.
 

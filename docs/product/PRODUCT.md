@@ -6,6 +6,13 @@ This doc holds the bet: what we're building, for whom, why it can exist, and wha
 is not. Testable statements live in [REQUIREMENTS.md](REQUIREMENTS.md). Sequencing
 lives in [ROADMAP.md](ROADMAP.md).
 
+**This repo now carries two products** (Toni, 2026-07-18: "Work Agent will be the
+reference app implementation building on top of the SPM which we carve out"). This
+doc is the app's; the agent-runtime SPM package has its own north star in
+[RUNTIME.md](RUNTIME.md) — same neutrality spine, different customer (Swift
+developers rather than end users). Where the two trade off, the runtime serves the
+app first until the runtime has users of its own.
+
 ---
 
 ## 1. The thesis

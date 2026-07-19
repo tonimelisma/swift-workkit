@@ -17,6 +17,7 @@ Read the ones your increment touches. Do not read all of them by reflex.
 | Doc | Answers | Rule |
 |---|---|---|
 | [docs/product/PRODUCT.md](docs/product/PRODUCT.md) | What are we building, for whom, why, and what are we *not* building | Changes when the product bet changes |
+| [docs/product/RUNTIME.md](docs/product/RUNTIME.md) | The second product: the agent-runtime SPM — who it serves, the layer bet, capabilities, non-goals | Changes when the runtime's product bet changes |
 | [docs/product/REQUIREMENTS.md](docs/product/REQUIREMENTS.md) | What must be true, testably, with IDs | Changes every increment that adds or alters behavior |
 | [docs/product/ROADMAP.md](docs/product/ROADMAP.md) | What order, and what's deliberately deferred | Changes when sequencing changes |
 | [docs/engineering/ENGINEERING.md](docs/engineering/ENGINEERING.md) | How the system is built *right now* | Always reflects reality — never aspiration |
