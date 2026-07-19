@@ -110,6 +110,11 @@ integrate it into the macOS app against a provider configured in increment 2. Th
 owns task persistence and presentation; the package owns provider-neutral execution.
 No general work tools yet.
 
+The build plan is [docs/plans/agent-loop-implementation.md](../plans/agent-loop-implementation.md);
+the API it must converge on is [docs/plans/runtime-api.md](../plans/runtime-api.md);
+the product frame is [RUNTIME.md](RUNTIME.md). The plan's §10 lists the open
+questions this increment's DOR puts to Toni.
+
 **Done when:** a real model call crosses all three layers, its result lands in a task
 that survives an app restart, and the task's status is observable while it runs. The
 package has no dependency on the app target or SwiftUI, its deterministic conformance
@@ -154,6 +159,30 @@ us, drawn from work Toni actually does — not from a category list.
 
 **Done when:** the real first task is named in PRODUCT.md and its requirements are
 written.
+
+---
+
+## The horizon after increment 7
+
+The 2026-07-18 north star ([RUNTIME.md](RUNTIME.md),
+[plans/runtime-api.md](../plans/runtime-api.md)) runs past increment 7 to a published
+runtime SPM and two reference apps. These are **direction with dependencies, not
+numbered increments** — each gets its number, plan, and DOR when Toni schedules it,
+and the dependency arrows are the only ordering claimed:
+
+| Future increment | Depends on | What it delivers |
+|---|---|---|
+| **Work Agent's first real tasks** | Increment 7's pick | The macOS app becomes genuinely useful; drives all later prioritization |
+| **Permissions and approvals** | First consequential real-task tools | The deferred approval model, designed once real tools show what needs gating |
+| **MCP** | Tool host proven (increment 5) | MCP client + the schema degradation ladder (runtime-api.md §4) |
+| **Runtime API hardening** | Increments 4–6 stable | Public-API review against runtime-api.md, DocC, `Examples/`, conformance suite made public |
+| **Extraction and publication** | API hardening **and OS 27 GA** (release gate, RUNTIME.md §6) | Package restructure-or-split, name and license decisions, first public tag |
+| **iOS tool modules + iOS reference app** | Runtime published or near it; macOS app proving it | The sibling product: scoped-access tools, suspension-safe durable runs (see deferred table) |
+| **The studio** | Unscheduled candidate (RUNTIME.md §6) | Local-first trace/replay/eval app, generalized from Work Agent's trace UI |
+
+An agent asked to "implement the next increment" works the numbered list first
+(4 → 5 → 6 → 7); when that's exhausted, the next increment is proposed from this
+table's dependency order and confirmed at its DOR — not assumed.
 
 ---
 
