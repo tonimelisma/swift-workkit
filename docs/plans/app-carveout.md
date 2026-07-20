@@ -1,6 +1,6 @@
 # Plan: carve the app out; make this an SPM-root repo
 
-**Roadmap item 1.** Toni, 2026-07-19: "the app is moving out of this repo… create a
+**Roadmap item 2** (after the attachment refactor). Toni, 2026-07-19: "the app is moving out of this repo… create a
 plan to carve the app out of this repo for good. can you change the build targets
 etc and make this an SPM repo?" Answer: yes — every step below is mechanical; the
 only thing an agent cannot do alone is create the destination GitHub repo under
@@ -10,6 +10,11 @@ in `Work Agent/` + `Work AgentTests/` + `Work Agent.xcodeproj`, package in
 (ENGINEERING.md), app docs parked in `docs/app/APP.md`.
 
 ## Order of operations
+
+**Runs after the attachment refactor (ROADMAP item 1)**: the app must have
+absorbed `TaskCoordinator`/`RunPolicy` as its own conductor code while both still
+live in this repo — carving out first would strand the conductor in a package
+that's about to delete it.
 
 Do the app's exit **before** the SPM-root restructure — moving `Package.swift` to
 the repo root while the Xcode project still references the package by path would
@@ -71,6 +76,6 @@ Verify: `xcodebuild -scheme "Work Agent" build test` against the remote referenc
 
 ## Deliberately not in this plan
 
-Renaming the repo or the package (the name decision is roadmap item 7,
-publication); tagging a version (gated on OS 27 GA); splitting ToolKit or the
+Renaming the repo or the package (the name decision rides publication, in the
+roadmap's riffraff); tagging a version (gated on OS 27 GA); splitting ToolKit or the
 executors into separate packages (only on demonstrated divergence).

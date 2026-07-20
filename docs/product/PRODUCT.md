@@ -104,8 +104,8 @@ package, runtime optional.
   no extraction model:* Toni chose it — zero per-fetch model cost.
 - **FR-083 — Implemented, not live-verified.** `web_search`, Brave-backed ("Both"
   — provider-hosted search plus a neutral backend was Toni's call; Brave chosen as
-  the conventional-SERP fallback). Tested against stubbed responses; a live key was
-  never supplied.
+  the conventional-SERP fallback). Tested against stubbed responses; the Brave key
+  arrived 2026-07-19 — live verification is ROADMAP item 3.
 - **FR-080 / FR-081 — Implemented in package, not yet surfaced.** `ask_user` and
   `update_plan`, validated against presenter/recorder doubles; the app UI that
   would show them doesn't exist yet.
@@ -155,4 +155,5 @@ Recorded honestly rather than silently skipped: no gated on-device
 `SystemLanguageModel` test yet (no eligible-device cycle); ToolKit calls aren't yet
 wrapped in `InstrumentedTool` at the app integration point (run id timing); the
 interactive send→quit→resume UI path was never human-verified; `web_search` never
-ran live. Each is a roadmap item, not a footnote.
+ran live (key now supplied; verification queued). Each is a roadmap item, not a
+footnote.

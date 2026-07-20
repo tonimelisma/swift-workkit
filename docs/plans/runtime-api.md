@@ -8,6 +8,11 @@ for now. if that's the real value, it's not much." · "MCP support should live
 somewhere else, it shouldn't depend on using our runtime should it?" · earlier:
 "the bigger value prop is the ready tools etc. the durability is not a key issue."
 Binding details are still confirmed per increment; this doc is the end state.
+**Getting the tree to this end state is ROADMAP item 1 (the attachment
+refactor)** — the built engine-shaped code is reshaped, not left to drift.
+Supported models explicitly include Apple's built-in `SystemLanguageModel` and
+Private Cloud Compute ("Apple Foundation Models support is cheap since it's
+built-in so we'll do that"); third-party local models are never built.
 
 ---
 

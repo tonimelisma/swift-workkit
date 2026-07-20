@@ -199,7 +199,7 @@ macOS 27 and iOS 27 (`xcodebuild ... -destination 'generic/platform=iOS'`).
 **Live smoke tests** (`LiveSmokeTests`, app target) hit real provider APIs through
 AgentKit's production executors, gated with `.enabled(if:)` on a `TEST_RUNNER_<VAR>` key
 so normal runs skip them. No equivalent live test exists for `web_search` — it needs a
-Brave Search API key nobody has supplied.
+Brave Search API key (supplied 2026-07-19; live verification queued, ROADMAP item 3).
 
 **Verification gap, named honestly.** The built app was launched and quit cleanly (no
 crash, no fault-level log entry) with the six file tools and `fetch_url` wired into
