@@ -28,8 +28,8 @@ Every run also carries the increment-5 starter tools: six file tools (`read_file
 ungated ("permissions come later") and rooted at the user's home directory.
 `ask_user`, `update_plan`, and `web_search` are built and tested as ToolKit products
 but not yet wired into the app — the first two need UI that doesn't exist yet
-(a question card, a plan display); the third needs a Brave Search API key nobody has
-supplied.
+(a question card, a plan display); the third's Brave Search API key arrived
+2026-07-19 — live verification is queued (ROADMAP item 3).
 
 The `Experiments/FoundationModelsPOC/` spike from increments 2–3 is gone: its proven
 executors, transcript archive, schema bridge, and session-semantics tests migrated into
