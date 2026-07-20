@@ -27,7 +27,7 @@ neither place is a bug.
 **Provider status (2026-07-19):** all eleven providers funded and keyed, including
 xAI, Meta, and Thinking Machines (previously never exercised), plus the Brave
 Search API key. Nothing below is blocked on quota or keys anymore; GLM alone needs
-code (JWT auth — riffraff'd; it leaves the menu in item 1's demolition).
+code (JWT auth — item 3; "the second best open source model").
 
 ---
 
@@ -53,10 +53,7 @@ forgotten"). This increment deletes, and its DOD greps to prove it:
    `LanguageModelSession` remains exported.
 3. `InstrumentedTool` as a public type — absorbed into the Recorder's
    internals; the public wrapper API waits in the riffraff.
-4. **GLM-5.2 leaves the app's model menu** — its auth doesn't work (JWT
-   unbuilt, riffraff), and an unusable model in the picker is a lie. Returns
-   with its auth. (Temporary edit to the curated set, recorded in APP.md.)
-5. Stale engine vocabulary anywhere — docs, tests, comments — scrubbed in the
+4. Stale engine vocabulary anywhere — docs, tests, comments — scrubbed in the
    same increment.
 
 ## 2. Carve the app out; make this an SPM-root repo
@@ -77,8 +74,13 @@ Everything here is unblocked now that all keys and quota exist:
   watched working end to end.
 - **Wire `ask_user` and `update_plan`** into the app (question card, plan display) —
   built tools delivering zero value until surfaced.
-- **Apple on-device model, verified**: a gated `SystemLanguageModel` test on an
-  eligible device — cheap, built-in, decided in ("we'll do that").
+- **Apple on-device model, verified and in the menu**: a gated
+  `SystemLanguageModel` test on an eligible device, and Apple's built-in model
+  joins the app's model picker (Toni, 2026-07-19: "Apple's foundation models
+  need to also be in the list").
+- **GLM JWT auth** — back in scope (Toni: "GLM is the second best open source
+  model, put it back"): the `id.secret` JWT signing its endpoints require, so
+  the eleventh provider verifies like the other ten.
 
 ## 4. Cost display — the Recorder's first user-facing slice
 
@@ -134,7 +136,6 @@ Not scheduled, not deleted. Nothing here gets built until its trigger fires.
 | **The studio** (local trace/replay/eval app) | PM-grade inspection demand in real use; needs Recorder completion |
 | **Composable run limits, restart-surviving interrupts, side-effect enforcement machinery** | Real use proves them ("the functionality and plans here got ahead of where I wanted to go") |
 | **Public attachment-API polish**: `recorder.instrument` as public API, profile-hook capture surface, corrective tool errors, `TranscriptUtilities` as polished public functions | The first external consumer of the package |
-| **GLM-5.2**: JWT auth (`id.secret` signing) and its return to the app menu | Anyone actually asking for GLM |
 | **Shell / code execution tool** | An isolation design exists; native document creation removed its main justification |
 | **Graph DSL, multi-agent, RAG/memory stack** | Non-goals until a real consumer proves need |
 | **Package/repo split** | Release cadences demonstrably diverge |

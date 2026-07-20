@@ -12,7 +12,9 @@ A native macOS app for people who are not developers: an AI agent driven through
 **chat** ("the user chats" — like Claude Cowork; no task catalog, no task templates),
 doing real work on the user's Mac with whatever model the user chooses. Model-neutral
 by construction — the reason it exists is that no vendor's own app will ever offer a
-competitor's model. BYO API key, cloud only, "no local models ever." Reference
+competitor's model. BYO API key; cloud models plus Apple's built-in
+on-device model ("Apple's foundation models need to also be in the list") —
+"no local models ever" applies to third-party local models. Reference
 implementation of AgentKit. Stage: Toni is the only user; onboarding polish and
 multi-user are deliberately absent.
 
@@ -84,11 +86,6 @@ policy, not a ✗.
 
 Still `Specified`, unbuilt: FR-005, FR-060 (surface), FR-064, FR-067, NFR-003
 (distribution — signing/notarization not yet performed).
-
-**Open product question (2026-07-19):** does the app's model picker ever offer
-Apple's built-in on-device model? The package supports it ("cheap since it's
-built-in"); the curated menu is sixteen cloud models and "no local models ever"
-was written about third-party models. Toni's call, undecided.
 
 ## App decisions and rationale (formerly ADR-0003, ADR-0005, ADR-0008)
 
