@@ -72,7 +72,9 @@ features delivered by this code.
   state and **automatically** resumes on a designated fallback, the switch recorded
   in the trace, the failed provider's opaque metadata stripped on replay. *Why
   automatic:* "task failover cool"; automatic-not-manual was Toni's explicit call
-  (2026-07-19). No framework in any ecosystem ships this.
+  (2026-07-19). No framework in any ecosystem ships this. Value re-analysis
+  verdict (2026-07-19): kept as built and working, but the MVP would not build
+  it today — do not expand it.
 - **FR-072 / FR-073 — Implemented** (app-facing behavior, package-supplied
   mechanics). A run in flight when the process exits pauses at its next checkpoint
   and offers resume on relaunch; conversations survive restart. *Why

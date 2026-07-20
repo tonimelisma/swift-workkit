@@ -27,31 +27,37 @@ neither place is a bug.
 **Provider status (2026-07-19):** all eleven providers funded and keyed, including
 xAI, Meta, and Thinking Machines (previously never exercised), plus the Brave
 Search API key. Nothing below is blocked on quota or keys anymore; GLM alone needs
-code (JWT auth), not money.
+code (JWT auth — riffraff'd; it leaves the menu in item 1's demolition).
 
 ---
 
-## 1. The attachment refactor — reshape the package to the pivot
+## 1. The attachment refactor — and the demolition list
 
-The 2026-07-18/19 re-visioning decided the architecture; nothing has refactored the
-code to match, and Toni caught the gap ("we made quite a re-visioning of the whole
-SPM and I don't see that refactoring anywhere on the roadmap"). This item makes the
-tree match [plans/runtime-api.md](../plans/runtime-api.md):
+Slimmed 2026-07-19 to its app-required half after the value re-analysis; the
+public attachment-API polish moved to the riffraff (an audience of external
+developers doesn't exist yet). What this item builds:
 
-- **The Recorder is born**: the journal becomes the Recorder's store;
-  `InstrumentedTool` becomes `recorder.instrument(_:)`; profile hooks capture
-  prompts/responses/usage; timestamps, full untruncated tool output, and tool
-  failures recorded.
-- **The engine dissolves**: `TaskCoordinator` and `RunPolicy` leave the package and
-  become Work Agent app code (the conductor is the app's); no session-owning public
-  API remains. Deleting from the SPM the stuff we won't do.
-- **Utilities extracted**: `TranscriptArchive.save/load` + `replay(to:)` (the
-  provider-state strip) as small free functions; the checkpoint store stays as the
-  plain persistence helper it already is.
-- Tests migrate with the code; the suite stays green on both platforms.
+- **The conductor moves into the app**: `TaskCoordinator`, `RunPolicy`, and
+  `SessionAttempt` become Work Agent app code — required before the carve-out
+  regardless, since the package deletes its engine surface.
+- **The journal becomes the Recorder's store, with usage capture** — exactly
+  enough for item 4's cost display to have something to read. No more.
 
-**Before the carve-out, deliberately**: the app absorbs its conductor while both
-still live in one repo.
+**The demolition list — removed and forgotten** (Toni: "all the things to be
+removed from either SPM or app put into item 1 to ensure it gets removed and
+forgotten"). This increment deletes, and its DOD greps to prove it:
+
+1. `TaskCoordinator`, `RunPolicy`, `SessionAttempt` — out of the package
+   (relocated to the app, deleted from the SPM's public surface).
+2. Any session-owning public API — nothing that wraps or drives
+   `LanguageModelSession` remains exported.
+3. `InstrumentedTool` as a public type — absorbed into the Recorder's
+   internals; the public wrapper API waits in the riffraff.
+4. **GLM-5.2 leaves the app's model menu** — its auth doesn't work (JWT
+   unbuilt, riffraff), and an unusable model in the picker is a lie. Returns
+   with its auth. (Temporary edit to the curated set, recorded in APP.md.)
+5. Stale engine vocabulary anywhere — docs, tests, comments — scrubbed in the
+   same increment.
 
 ## 2. Carve the app out; make this an SPM-root repo
 
@@ -73,7 +79,6 @@ Everything here is unblocked now that all keys and quota exist:
   built tools delivering zero value until surfaced.
 - **Apple on-device model, verified**: a gated `SystemLanguageModel` test on an
   eligible device — cheap, built-in, decided in ("we'll do that").
-- **GLM JWT auth** — last and least: one exotic model, a third auth style.
 
 ## 4. Cost display — the Recorder's first user-facing slice
 
@@ -89,8 +94,7 @@ client behind a package trait, the schema degradation ladder (`GenerationSchema`
 accepts a strict JSON Schema subset; unsupported keywords reported with path and
 fallback, never silently flattened), Gmail and Outlook servers as the proving
 integrations — real-world schema corpora, OAuth handled by the servers, not by us.
-The journal-before-execute guard in `recorder.instrument` starts earning rent
-here: "may have sent" is asked about, never silently repeated.
+The Recorder's journal-before-execute guard starts earning rent here: "may have sent" is asked about, never silently repeated.
 
 ## 6. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
 
@@ -99,9 +103,10 @@ locally." `ToolKitDocuments`: PDF via PDFKit; docx/xlsx/pptx created natively (a
 three are OOXML zips — the ZIPFoundation path that reads docx writes them); no
 code-execution sandbox in the loop, unlike every competitor. Google
 Docs/Sheets/Slides only through existing MCP servers riding item 5 — we never
-build our own Google OAuth. Per-format specs (templates, styling scope,
-append-vs-create) researched at planning; xlsx/pptx *reading* settled in the same
-plan.
+build our own Google OAuth. Waved for value (2026-07-19 re-analysis): **wave 1 = PDF + docx** — the daily
+asks — **wave 2 = xlsx + pptx**, the fattest parsers for the rarest requests.
+Per-format specs (templates, styling scope, append-vs-create) researched at
+planning; xlsx/pptx *reading* settled with wave 2.
 
 ## 7. ToolKitPIM: Contacts, Calendar, Reminders
 
@@ -128,6 +133,8 @@ Not scheduled, not deleted. Nothing here gets built until its trigger fires.
 | **iOS**: `ToolKitForiOS`, security-scoped file bodies, suspension validation | The macOS app is polished first; the suspension-safe checkpoint design is already done and costs nothing to keep |
 | **The studio** (local trace/replay/eval app) | PM-grade inspection demand in real use; needs Recorder completion |
 | **Composable run limits, restart-surviving interrupts, side-effect enforcement machinery** | Real use proves them ("the functionality and plans here got ahead of where I wanted to go") |
+| **Public attachment-API polish**: `recorder.instrument` as public API, profile-hook capture surface, corrective tool errors, `TranscriptUtilities` as polished public functions | The first external consumer of the package |
+| **GLM-5.2**: JWT auth (`id.secret` signing) and its return to the app menu | Anyone actually asking for GLM |
 | **Shell / code execution tool** | An isolation design exists; native document creation removed its main justification |
 | **Graph DSL, multi-agent, RAG/memory stack** | Non-goals until a real consumer proves need |
 | **Package/repo split** | Release cadences demonstrably diverge |

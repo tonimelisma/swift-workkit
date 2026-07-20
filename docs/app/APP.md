@@ -85,6 +85,11 @@ policy, not a ✗.
 Still `Specified`, unbuilt: FR-005, FR-060 (surface), FR-064, FR-067, NFR-003
 (distribution — signing/notarization not yet performed).
 
+**Open product question (2026-07-19):** does the app's model picker ever offer
+Apple's built-in on-device model? The package supports it ("cheap since it's
+built-in"); the curated menu is sixteen cloud models and "no local models ever"
+was written about third-party models. Toni's call, undecided.
+
 ## App decisions and rationale (formerly ADR-0003, ADR-0005, ADR-0008)
 
 - **Developer ID, never Mac App Store.** The App Sandbox forbids what the product
