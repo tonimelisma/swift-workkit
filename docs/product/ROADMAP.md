@@ -48,6 +48,7 @@ it's true that Anthropic's full reasoning fidelity round-trips correctly.
 
 ## 2. Verify the core, close the gaps
 
+**Ready plan: [plans/live-verification.md](../plans/live-verification.md).**
 Everything here is unblocked now that all keys and quota exist:
 
 - **Live-verify all eleven providers** — first-ever runs for xAI, Meta, and
