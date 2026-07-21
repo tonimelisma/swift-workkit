@@ -120,6 +120,15 @@ dead decision.
    real effort. Trivial lookups stay in the transcript.
 4. **Honest reports.** Gaps are named, never silently skipped. Tests that didn't run,
    features not exercised live, keys nobody had — say so in the PR and the docs.
+5. **Routine pipeline mechanics execute without asking.** Committing (doc-only
+   straight to main; code via worktree + PR), merging a PR once it's green, and
+   deleting a branch already merged into main are pre-authorized by this document —
+   do them, then report what happened; never pause to ask first. Toni confirmed this
+   2026-07-21 after repeated friction from being asked to approve steps this document
+   already describes. Scope: this covers only the mechanics this document itself
+   spells out. It does not extend to anything this document doesn't already
+   describe — force-push, discarding uncommitted work, or deleting a branch that
+   isn't fully merged still warrant a pause, same as any other repo.
 
 ## Traceability
 
