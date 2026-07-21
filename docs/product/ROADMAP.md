@@ -29,7 +29,38 @@ in neither place is a bug.
 
 ---
 
-## 1. Email: Gmail and Outlook via MCP
+## 1. Provider tool-cycle failures — review findings from the 2026-07-20 live matrix
+
+The live verification measured the headline claim at **5 of 11** providers passing
+a real tool cycle. Endpoint and auth are right on all six failures; the failures
+are at the tool-cycle layer, and at least three look like *our* work, not theirs.
+Ranked:
+
+1. **OpenAI needs a Responses API path.** `gpt-5.6` cannot tool-call on
+   `/v1/chat/completions` at all (HTTP 400: "use /v1/responses or set
+   reasoning_effort to 'none'"). Degrading reasoning to none would neuter the
+   model (against FR-060's principle), so the real fix is Responses API support
+   in the executor family — a third wire shape, and the biggest finding of the
+   matrix: until it lands, the README's "GPT" mention is measured-false for
+   agent use. Fix rather than caveat; caveat the README only if this item
+   stalls.
+2. **minimax + meta share one symptom** — Apple's "Session ended without
+   producing a response" after the tool call, reproducible standalone. Two
+   providers with the identical failure suggests a class bug on our side of the
+   second request (finish-reason mapping, empty-stream guard, or tool-result
+   encoding variance). Investigate with raw-wire capture before assuming
+   provider fault.
+3. **moonshotai ignores the tool under auto tool_choice** — suspicious, because
+   the 2026-07-16 probes showed `kimi-k3` emitting tool calls under auto.
+   Something in our request body (or the harness prompt) changed the behavior;
+   diff the working old probe body against the executor's request.
+4. **zai/GLM: 401 with a correctly-built JWT** (independently confirmed via
+   curl). The auth code is right; the rejection is account/key-side —
+   **Toni action**: check the Zhipu key's type/platform entitlement.
+5. **thinkingmachines: nothing deployed on the account** (`/v1/models` returns
+   empty) — **Toni action**: deploy/enable `inkling` or confirm the account.
+
+## 2. Email: Gmail and Outlook via MCP
 
 "Gmail and Outlook via MCP. No one uses the local mail app. Put them ASAP." The
 assistant's killer capability, and it carries the MCP foundation with it: the
@@ -39,7 +70,7 @@ fallback, never silently flattened), Gmail and Outlook servers as the proving
 integrations — real-world schema corpora, OAuth handled by the servers, not by us.
 The Recorder's journal-before-execute guard starts earning rent here: "may have sent" is asked about, never silently repeated.
 
-## 2. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
+## 3. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
 
 "Yes all office doc creation too ASAP. Google via MCP if available. Docx xlsx pptx
 locally." `ToolKitDocuments`: PDF via PDFKit; docx/xlsx/pptx created natively (all
@@ -51,7 +82,7 @@ asks — **wave 2 = xlsx + pptx**, the fattest parsers for the rarest requests.
 Per-format specs (templates, styling scope, append-vs-create) researched at
 planning; xlsx/pptx *reading* settled with wave 2.
 
-## 3. ToolKitPIM: Contacts, Calendar, Reminders
+## 4. ToolKitPIM: Contacts, Calendar, Reminders
 
 "What's on my calendar" — the local-first answer to Cowork's OAuth connectors:
 EventKit/Contacts frameworks, no sign-in, works offline. Cross-platform domain
