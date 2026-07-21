@@ -9,7 +9,7 @@ where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 104 package tests (92 run unconditionally — the on-device
+`ToolKitForMac`). 110 package tests (98 run unconditionally — the on-device
 Apple model among them where hardware allows; 12 are `.env`-key-gated live
 provider/search smokes that self-skip without keys), green on both platforms.
 MIT. This repo is
@@ -63,20 +63,22 @@ move the current repo to be an SPM repo for WorkKit").
   thinking blocks — verified live against real endpoints. *Why it matters:* these
   requirements are invisible until the second request of an agent loop, and
   "we're not trying to neuter them" (FR-060's principle; full fidelity work
-  continues on the roadmap).
-- **Live-verified, full tool-cycle, 2026-07-20** (`ExecutorsLiveTests`, ROADMAP
-  item 2): deepseek, anthropic, google, alibaba, and xai (xai's first-ever live
-  probe — endpoint taken from a fresh models.dev fetch, confirmed live) complete a
-  real request → tool call → tool result → final response cycle end to end.
-  moonshotai, openai, minimax, meta (first-ever probe), and zai (GLM) connect with
-  valid auth but fail at the tool-cycle step for provider-specific reasons, and
-  thinkingmachines (first-ever probe) has no model currently deployed on this
-  account — named exactly in
+  continues on the roadmap). Anthropic `redacted_thinking` blocks round-trip the
+  same way (fixture-tested, not yet verified live — triggering a real redacted
+  block isn't deterministic, so this waits on real usage rather than a synthetic
+  live probe).
+- **Live-verified, full tool-cycle, 2026-07-20** (`ExecutorsLiveTests`): deepseek,
+  anthropic, google, alibaba, and xai (xai's first-ever live probe — endpoint
+  taken from a fresh models.dev fetch, confirmed live) complete a real request →
+  tool call → tool result → final response cycle end to end. moonshotai, openai,
+  minimax, meta (first-ever probe), and zai (GLM) connect with valid auth but fail
+  at the tool-cycle step for provider-specific reasons, and thinkingmachines
+  (first-ever probe) has no model currently deployed on this account — named
+  exactly in
   [research/provider-chat-endpoints.md](../research/provider-chat-endpoints.md),
   not glossed over. *Why record the failures instead of only the passes:* "a
   failing provider stays failed in the results table with its exact symptom" —
-  fixing them is out of this increment's scope and a candidate for future roadmap
-  items.
+  fixing them is future roadmap work, not claimed here.
 - **GLM (Zhipu) JWT auth built, not yet functional.** `OpenAICompatibleExecutor
   .Configuration.AuthStyle.zhipuJWT` signs the HS256 JWT Zhipu's documented
   community shape requires (id.secret key, HMAC-SHA256 via CryptoKit), verified

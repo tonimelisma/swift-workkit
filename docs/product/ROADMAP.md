@@ -29,19 +29,7 @@ in neither place is a bug.
 
 ---
 
-## 1. Anthropic `redacted_thinking` blocks dropped (2026-07-20 review, unresolved)
-
-**Ready plan: [plans/redacted-thinking-fix.md](../plans/redacted-thinking-fix.md).**
-
-**`Sources/Executors/StreamParsing.swift`: the parser ignores `redacted_thinking`
-blocks; Anthropic requires thinking blocks replayed in tool loops, so a
-conversation that triggers one breaks on its next request.** Carried over from
-the 2026-07-20 full-repo review's errata — the other 8 ranked findings from that
-same review were fixed in one increment (see PRODUCT.md/ENGINEERING.md for what
-shipped), but this one wasn't in that increment's plan and needs its own before
-it's true that Anthropic's full reasoning fidelity round-trips correctly.
-
-## 2. Email: Gmail and Outlook via MCP
+## 1. Email: Gmail and Outlook via MCP
 
 "Gmail and Outlook via MCP. No one uses the local mail app. Put them ASAP." The
 assistant's killer capability, and it carries the MCP foundation with it: the
@@ -51,19 +39,19 @@ fallback, never silently flattened), Gmail and Outlook servers as the proving
 integrations — real-world schema corpora, OAuth handled by the servers, not by us.
 The Recorder's journal-before-execute guard starts earning rent here: "may have sent" is asked about, never silently repeated.
 
-## 3. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
+## 2. Document creation: PDF, docx, xlsx, pptx — and Google via MCP
 
 "Yes all office doc creation too ASAP. Google via MCP if available. Docx xlsx pptx
 locally." `ToolKitDocuments`: PDF via PDFKit; docx/xlsx/pptx created natively (all
 three are OOXML zips — the ZIPFoundation path that reads docx writes them); no
 code-execution sandbox in the loop, unlike every competitor. Google
-Docs/Sheets/Slides only through existing MCP servers riding item 2 — we never
+Docs/Sheets/Slides only through existing MCP servers riding item 1 — we never
 build our own Google OAuth. Waved for value (2026-07-19 re-analysis): **wave 1 = PDF + docx** — the daily
 asks — **wave 2 = xlsx + pptx**, the fattest parsers for the rarest requests.
 Per-format specs (templates, styling scope, append-vs-create) researched at
 planning; xlsx/pptx *reading* settled with wave 2.
 
-## 4. ToolKitPIM: Contacts, Calendar, Reminders
+## 3. ToolKitPIM: Contacts, Calendar, Reminders
 
 "What's on my calendar" — the local-first answer to Cowork's OAuth connectors:
 EventKit/Contacts frameworks, no sign-in, works offline. Cross-platform domain

@@ -63,8 +63,9 @@ Sources/
   ToolKitForMac/                            umbrella: re-exports the three above
 Tests/
   RecorderTests/                            21 tests: durability, semantics
-  ExecutorsTests/                           21 tests: SSE parsing, both wire formats, stream
-                                             guards, GLM JWT construction (fixed clock)
+  ExecutorsTests/                           27 tests: SSE parsing, both wire formats, stream
+                                             guards, redacted-thinking round-trip, GLM JWT
+                                             construction (fixed clock)
   ToolKitFilesTests/                        27 tests: paging, docx, glob, read-before-write
   ToolKitWebTests/                          17 tests: Markdown rendering, SSRF, redirects,
                                              search (16 offline + 1 live, BRAVE_API_KEY-gated)
@@ -158,7 +159,7 @@ func askUserValidatesQuestionCount() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-The package's own suite (`swift test` from the repo root) is 104 tests: transcript
+The package's own suite (`swift test` from the repo root) is 110 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
 (standing in for a process restart) including torn-tail and corrupt-checkpoint
@@ -171,13 +172,15 @@ an in-memory `.docx` fixture built with ZIPFoundation rather than a committed
 binary), `fetch_url`'s Markdown rendering, redirect-walking, streaming-cap, and
 SSRF host checks against a stubbed `URLSession` (`ToolKitWebTests`), the executor
 stream guards (non-SSE Content-Type, zero-event streams, error-body capture),
-Anthropic's reasoning-level→effort mapping, and the GLM JWT construction against a
-fixed clock (`ExecutorsTests`), and `ask_user`/`update_plan` validation against fake
+Anthropic's reasoning-level→effort mapping against a stubbed `URLSession`, its
+`redacted_thinking` round-trip (parser, bridge accumulation, encoder ordering),
+and the GLM JWT construction against a fixed clock (`ExecutorsTests`), and
+`ask_user`/`update_plan` validation against fake
 presenter/recorder doubles (`ToolKitInteractionTests`). It builds and passes on
 both macOS 27 and iOS 27
 (`xcodebuild -scheme WorkKit-Package -destination 'generic/platform=iOS' build`).
 
-**Live-provider verification (ROADMAP item 2, closed 2026-07-20).** A dedicated
+**Live-provider verification, closed 2026-07-20.** A dedicated
 `ExecutorsLiveTests` target (`Executors` + `ToolKitFiles` + `Recorder`) hits real
 provider APIs through this package's own production executors — the previous
 `LiveSmokeTests`/`ConductorTests` lived in the now-deleted Work Agent app's test
@@ -301,7 +304,10 @@ proxy-backend auth (vs. local BYOK keys), is beta and closed to contributions, a
 failover requires knowing precisely where provider state lives. Known cost we
 accepted: we own wire drift (base paths, reasoning field renames, dual endpoints),
 and staleness is silent until a provider breaks — the conformance suite is the
-drift detector.
+drift detector. Anthropic's `redacted_thinking` blocks round-trip the same way
+signed thinking blocks do: carried as reasoning-entry metadata (an opaque array,
+JSON-encoded, since a response can carry several), stripped by the existing
+provider-prefix filter on a cross-provider replay with no archive changes.
 
 One of those presets is auth, not just base URL and model: GLM/Zhipu rejects its
 `id.secret` key as a raw bearer token and wants an HS256 JWT instead (see
