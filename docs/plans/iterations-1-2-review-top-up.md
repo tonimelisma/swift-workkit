@@ -15,17 +15,29 @@ is open.
 2. In `Tests/ExecutorsTests/OpenAIResponsesTests.swift`, remove the unnecessary
    `try` that Xcode 27 now diagnoses.
 3. Correct `docs/engineering/ENGINEERING.md` from 110 to 131 discovered tests.
-4. Record the 2026-07-22 live result everywhere it changes current truth:
-   GLM now completes the full tool cycle, so the matrix is 10 of 11; remove its
-   account action from `docs/product/ROADMAP.md`; update `README.md`,
+4. Correct the Thinking Machines preset using the provider's official
+   documentation and a direct two-leg probe:
+   - model ID: `thinkingmachines/Inkling` (case-sensitive);
+   - endpoint: the Anthropic-compatible
+     `https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api/v1/messages`,
+     not the OpenAI-compatible endpoint intended for `tinker://` sampler
+     checkpoint paths;
+   - generalize `AnthropicModel`/`AnthropicExecutor.Configuration` with
+     defaulted `providerID` and `endpoint` values, keeping the existing Anthropic
+     API source-compatible, and use the configured provider ID for diagnostics,
+     transcript metadata ownership, and same-provider reasoning replay;
+   - move the Thinking Machines live test to that executor and add offline
+     configuration/encoding coverage.
+5. Record the 2026-07-22 live result everywhere it changes current truth:
+   GLM now completes the full tool cycle; re-run Thinking Machines through the
+   corrected preset; remove resolved account actions from
+   `docs/product/ROADMAP.md`; update `README.md`,
    `docs/product/PRODUCT.md`, `docs/engineering/ENGINEERING.md`, and
-   `docs/research/provider-chat-endpoints.md`. Thinking Machines remains the
-   sole failure, returning HTTP 400 because `inkling` is unsupported on the
-   account.
+   `docs/research/provider-chat-endpoints.md` with only the measured outcome.
 
-No new FR/NFR is minted: this changes no behavior or architecture and only
-keeps the existing implementation warning-free and its verification record
-truthful.
+No new FR/NFR is minted: the provider-neutral executor requirement already
+covers configurable providers, and this corrects a broken preset rather than
+adding a capability.
 
 ## Verification
 
