@@ -20,6 +20,7 @@ let package = Package(
         .library(name: "ToolKitFiles", targets: ["ToolKitFiles"]),
         .library(name: "ToolKitWeb", targets: ["ToolKitWeb"]),
         .library(name: "ToolKitInteraction", targets: ["ToolKitInteraction"]),
+        .library(name: "ToolKitPIM", targets: ["ToolKitPIM"]),
         .library(name: "ToolKitForMac", targets: ["ToolKitForMac"]),
     ],
     dependencies: [
@@ -45,9 +46,13 @@ let package = Package(
             dependencies: ["ToolVocabulary", .product(name: "SwiftSoup", package: "SwiftSoup")]
         ),
         .target(name: "ToolKitInteraction", dependencies: ["ToolVocabulary"]),
+        // ToolKitPIM: EventKit + Contacts for all three PIM domains. No
+        // ToolVocabulary dependency — it touches no effect/budget metadata —
+        // and no external deps: the frameworks are Apple's.
+        .target(name: "ToolKitPIM"),
         .target(
             name: "ToolKitForMac",
-            dependencies: ["ToolKitFiles", "ToolKitWeb", "ToolKitInteraction"]
+            dependencies: ["ToolKitFiles", "ToolKitWeb", "ToolKitInteraction", "ToolKitPIM"]
         ),
         .testTarget(
             name: "RecorderTests",
@@ -72,6 +77,10 @@ let package = Package(
         .testTarget(
             name: "ToolKitInteractionTests",
             dependencies: ["ToolKitInteraction"]
+        ),
+        .testTarget(
+            name: "ToolKitPIMTests",
+            dependencies: ["ToolKitPIM"]
         ),
         // Gated live-provider smoke tests hitting real endpoints — see
         // Tests/ExecutorsLiveTests/LiveTestSupport.swift for the run command and gating
