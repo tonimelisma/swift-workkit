@@ -47,6 +47,7 @@ evidence has to be redone the moment anyone doubts it — which defeats the poin
 | [apple-llm-stack-second-opinion.md](apple-llm-stack-second-opinion.md) | Independent verification of the three-layer bet: SDK read first-hand, POC re-run, vendor/HF packages checked; four design dissents and the SPM product shape | 2026-07-18 |
 | [foundation-models-adaptation.md](foundation-models-adaptation.md) | Whether and how to adapt the loop to macOS 27 Foundation Models: API mapping, hybrid boundary, measured session semantics, and passing live executors/model switch | 2026-07-18 |
 | [pim-frameworks.md](pim-frameworks.md) | EventKit/Contacts availability and quirks on OS 27 (both platforms), Generable's no-Date limit, TCC keys, thread-safety | 2026-08-02 |
+| [native-tool-candidates.md](native-tool-candidates.md) | Apple frameworks as agent tools: verified availability on both OS 27 SDKs, tiered evaluation against the thesis (location/Maps, Vision OCR, notifications, WeatherKit entitlement, screen-capture non-goal, etc.) | 2026-08-02 |
 
 **A note on retired references.** Older research docs cite `ADR-NNNN` files and the
 former RUNTIME.md/REQUIREMENTS.md. Those documents were merged in the 2026-07-19
