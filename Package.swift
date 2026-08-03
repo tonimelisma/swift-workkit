@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "ToolKitInteraction", targets: ["ToolKitInteraction"]),
         .library(name: "ToolKitPIM", targets: ["ToolKitPIM"]),
         .library(name: "ToolKitForMac", targets: ["ToolKitForMac"]),
+        .library(name: "ToolKitForiOS", targets: ["ToolKitForiOS"]),
     ],
     dependencies: [
         // The only two external dependencies anywhere in the package (both pure
@@ -52,6 +53,13 @@ let package = Package(
         .target(name: "ToolKitPIM"),
         .target(
             name: "ToolKitForMac",
+            dependencies: ["ToolKitFiles", "ToolKitWeb", "ToolKitInteraction", "ToolKitPIM"]
+        ),
+        // ToolKitForiOS mirrors ToolKitForMac for iOS/iPadOS (one .iOS platform
+        // line covers both): the domain targets are cross-platform, so the
+        // umbrella is pure re-export — see ToolKitForiOS.swift.
+        .target(
+            name: "ToolKitForiOS",
             dependencies: ["ToolKitFiles", "ToolKitWeb", "ToolKitInteraction", "ToolKitPIM"]
         ),
         .testTarget(

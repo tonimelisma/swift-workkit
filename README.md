@@ -74,7 +74,10 @@ services — mount an MCP server. One import per platform gives you the full
 platform-true set; the shared tools present identical schemas on both, so
 prompts, evals, and recorded runs transfer between your Mac and iPhone apps.
 File tools have a plain-path body on macOS and a security-scoped body on iOS
-behind the same interface. Tools that need user permission document the exact
+behind the same interface. On iOS, hand the tools a folder URL from
+`UIDocumentPicker` as their `securityScopedRoot` — the model keeps passing
+relative paths exactly as on macOS, and the tool activates the grant around each
+call. Tools that need user permission document the exact
 usage-description keys the host app must carry.
 
 **ToolKitPIM** covers Contacts, Calendar, and Reminders locally — EventKit and

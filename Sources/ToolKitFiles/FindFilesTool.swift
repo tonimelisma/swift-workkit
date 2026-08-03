@@ -21,14 +21,23 @@ public struct FindFilesTool: Tool, Sendable {
     public let description = "Find files by glob pattern (e.g. **/*.docx). Capped at 100 matches, sorted by most recently modified."
 
     private let root: URL
+    private let securityScopedRoot: URL?
     private let maximumMatches: Int
 
-    public init(root: URL, maximumMatches: Int = 100) {
-        self.root = root.standardizedFileURL.resolvingSymlinksInPath()
+    public init(root: URL, maximumMatches: Int = 100, securityScopedRoot: URL? = nil) {
+        // REQ: FR-101 — see ReadFileTool: scoped roots are stored as-granted.
+        self.securityScopedRoot = securityScopedRoot
+        self.root = securityScopedRoot ?? root.standardizedFileURL.resolvingSymlinksInPath()
         self.maximumMatches = maximumMatches
     }
 
     public func call(arguments: FindFilesArguments) async throws -> String {
+        try await SecurityScopedAccess.withScopedAccess(to: securityScopedRoot) {
+            try await perform(arguments: arguments)
+        }
+    }
+
+    private func perform(arguments: FindFilesArguments) async throws -> String {
         let searchRoot = arguments.path.map { FileToolPath.resolve($0, root: root) } ?? root
         guard let enumerator = FileManager.default.enumerator(
             at: searchRoot,

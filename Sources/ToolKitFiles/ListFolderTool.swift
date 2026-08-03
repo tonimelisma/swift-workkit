@@ -23,16 +23,25 @@ public struct ListFolderTool: Tool, Sendable {
     """
 
     private let root: URL
+    private let securityScopedRoot: URL?
     private let maximumDepth: Int
     private let maximumEntries: Int
 
-    public init(root: URL, maximumDepth: Int = 3, maximumEntries: Int = 300) {
-        self.root = root.standardizedFileURL.resolvingSymlinksInPath()
+    public init(root: URL, maximumDepth: Int = 3, maximumEntries: Int = 300, securityScopedRoot: URL? = nil) {
+        // REQ: FR-101 — see ReadFileTool: scoped roots are stored as-granted.
+        self.securityScopedRoot = securityScopedRoot
+        self.root = securityScopedRoot ?? root.standardizedFileURL.resolvingSymlinksInPath()
         self.maximumDepth = maximumDepth
         self.maximumEntries = maximumEntries
     }
 
     public func call(arguments: ListFolderArguments) async throws -> String {
+        try await SecurityScopedAccess.withScopedAccess(to: securityScopedRoot) {
+            try await perform(arguments: arguments)
+        }
+    }
+
+    private func perform(arguments: ListFolderArguments) async throws -> String {
         let url = FileToolPath.resolve(arguments.path, root: root)
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),

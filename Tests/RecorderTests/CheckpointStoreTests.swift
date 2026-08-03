@@ -6,7 +6,7 @@ import Testing
 // A checkpoint written by one process instance is readable by another, which is
 // what "survives a host restart" means mechanically.
 
-@Test("A saved checkpoint reloads from a fresh store instance with status intact")
+@Test("NFR-012: a saved checkpoint reloads from a fresh store instance with status intact")
 func fileCheckpointStoreRoundTrips() async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

@@ -33,6 +33,7 @@ public struct ReadFileTool: Tool, Sendable {
     """
 
     private let root: URL
+    private let securityScopedRoot: URL?
     private let ledger: FileReadLedger
     private let maximumLines: Int
     private let maximumLineCharacters: Int
@@ -43,9 +44,14 @@ public struct ReadFileTool: Tool, Sendable {
         ledger: FileReadLedger,
         maximumLines: Int = 2_000,
         maximumLineCharacters: Int = 2_000,
-        maximumOutputCharacters: Int = 16_000
+        maximumOutputCharacters: Int = 16_000,
+        securityScopedRoot: URL? = nil
     ) {
-        self.root = root.standardizedFileURL.resolvingSymlinksInPath()
+        // REQ: FR-101 — a security-scoped root is stored as-granted; standardizing
+        // or resolving symlinks on it can invalidate the grant. When absent the
+        // root is canonicalized exactly as before.
+        self.securityScopedRoot = securityScopedRoot
+        self.root = securityScopedRoot ?? root.standardizedFileURL.resolvingSymlinksInPath()
         self.ledger = ledger
         self.maximumLines = maximumLines
         self.maximumLineCharacters = maximumLineCharacters
@@ -53,6 +59,12 @@ public struct ReadFileTool: Tool, Sendable {
     }
 
     public func call(arguments: ReadFileArguments) async throws -> String {
+        try await SecurityScopedAccess.withScopedAccess(to: securityScopedRoot) {
+            try await perform(arguments: arguments)
+        }
+    }
+
+    private func perform(arguments: ReadFileArguments) async throws -> String {
         let url = FileToolPath.resolve(arguments.path, root: root)
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw FileToolError.notFound(path: arguments.path)

@@ -24,14 +24,23 @@ public struct WriteFileTool: Tool, Sendable {
     """
 
     private let root: URL
+    private let securityScopedRoot: URL?
     private let ledger: FileReadLedger
 
-    public init(root: URL, ledger: FileReadLedger) {
-        self.root = root.standardizedFileURL.resolvingSymlinksInPath()
+    public init(root: URL, ledger: FileReadLedger, securityScopedRoot: URL? = nil) {
+        // REQ: FR-101 — see ReadFileTool: scoped roots are stored as-granted.
+        self.securityScopedRoot = securityScopedRoot
+        self.root = securityScopedRoot ?? root.standardizedFileURL.resolvingSymlinksInPath()
         self.ledger = ledger
     }
 
     public func call(arguments: WriteFileArguments) async throws -> String {
+        try await SecurityScopedAccess.withScopedAccess(to: securityScopedRoot) {
+            try await perform(arguments: arguments)
+        }
+    }
+
+    private func perform(arguments: WriteFileArguments) async throws -> String {
         let url = FileToolPath.resolve(arguments.path, root: root)
         let exists = FileManager.default.fileExists(atPath: url.path)
         if exists {

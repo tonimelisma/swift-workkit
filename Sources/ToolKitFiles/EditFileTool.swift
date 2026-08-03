@@ -32,14 +32,23 @@ public struct EditFileTool: Tool, Sendable {
     """
 
     private let root: URL
+    private let securityScopedRoot: URL?
     private let ledger: FileReadLedger
 
-    public init(root: URL, ledger: FileReadLedger) {
-        self.root = root.standardizedFileURL.resolvingSymlinksInPath()
+    public init(root: URL, ledger: FileReadLedger, securityScopedRoot: URL? = nil) {
+        // REQ: FR-101 — see ReadFileTool: scoped roots are stored as-granted.
+        self.securityScopedRoot = securityScopedRoot
+        self.root = securityScopedRoot ?? root.standardizedFileURL.resolvingSymlinksInPath()
         self.ledger = ledger
     }
 
     public func call(arguments: EditFileArguments) async throws -> String {
+        try await SecurityScopedAccess.withScopedAccess(to: securityScopedRoot) {
+            try await perform(arguments: arguments)
+        }
+    }
+
+    private func perform(arguments: EditFileArguments) async throws -> String {
         let url = FileToolPath.resolve(arguments.path, root: root)
         guard await ledger.hasRead(url.path) else {
             throw FileToolError.notReadBeforeWrite(path: arguments.path)

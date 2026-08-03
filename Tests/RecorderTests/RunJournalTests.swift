@@ -6,7 +6,7 @@ import ToolVocabulary
 // REQ: the append-only run journal is execution
 // truth; it must survive being read back from a fresh instance (crash/restart).
 
-@Test("Appended events round-trip in order from a fresh journal instance")
+@Test("NFR-012: appended events round-trip in order from a fresh journal instance")
 func fileRunJournalRoundTrips() async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

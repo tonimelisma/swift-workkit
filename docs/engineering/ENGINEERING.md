@@ -57,7 +57,10 @@ Sources/
   RuntimeTesting/
     ScriptedLanguageModel.swift             closure-scripted LanguageModel double
   ToolKitFiles/                             read_file, list_folder, find_files,
-                                             search_files, write_file, edit_file
+                                             search_files, write_file, edit_file —
+                                             each accepts an optional
+                                             securityScopedRoot (FR-101) and wraps
+                                             calls in SecurityScopedAccess
   ToolKitWeb/                               fetch_url, web_search (Brave-backed),
                                              NetworkSafety (SSRF host check)
   ToolKitInteraction/                       ask_user, update_plan
@@ -67,18 +70,21 @@ Sources/
                                             protocols (CalendarEventStore /
                                             ReminderStore / ContactStore)
   ToolKitForMac/                            umbrella: re-exports the four above
+  ToolKitForiOS/                            umbrella: re-exports the four above
+                                            (iOS/iPadOS; see ToolKitForiOS.swift)
 Tests/
   RecorderTests/                            21 tests: durability, semantics
   ExecutorsTests/                           50 tests: SSE parsing, all three wire formats,
                                              stream guards, tool-call-turn buffering through a
                                              real session, redacted-thinking round-trip, GLM
                                              JWT construction (fixed clock)
-  ToolKitFilesTests/                        27 tests: paging, docx, glob, read-before-write
   ToolKitWebTests/                          17 tests: Markdown rendering, SSRF, redirects,
                                              search (16 offline + 1 live, BRAVE_API_KEY-gated)
   ToolKitInteractionTests/                  6 tests: ask_user/update_plan validation
   ToolKitPIMTests/                          33 tests: calendar/reminder/contact tool
                                              contracts against in-memory store doubles
+  ToolKitFilesTests/                        32 tests: paging, docx, glob, read-before-write,
+                                             security-scoped-root no-op path (FR-101)
   ExecutorsLiveTests/                       12 tests: real providers + Apple on-device,
                                              through this package's own executors —
                                              11 key-gated (skip without `.env`), 1
@@ -97,7 +103,7 @@ docs/                                       specs
 | Durable-run substrate | `Recorder`: journal + checkpoints + archive replay, attach-only, no owned loop | Why below |
 | Min macOS | **27.0** | NFR-009, Why below |
 | Package platforms | **iOS 27 and macOS 27**, both build and test green | NFR-010, Why below |
-| Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`, umbrella'd as `ToolKitForMac` | FR-074–083, FR-086–099, tool-architecture.md |
+| Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`, umbrella'd as `ToolKitForMac`/`ToolKitForiOS` | FR-074–083, FR-086–099, FR-100/101, tool-architecture.md |
 | Tool dependencies | ZIPFoundation (.docx is a zip), SwiftSoup (HTML→Markdown) — the only two external dependencies anywhere in the package, both pre-approved pure Swift | Package.swift |
 
 ## Architecture
@@ -169,7 +175,7 @@ func askUserValidatesQuestionCount() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-The package's own suite (`swift test` from the repo root) is 166 tests: transcript
+The package's own suite (`swift test` from the repo root) is 171 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
 (standing in for a process restart) including torn-tail and corrupt-checkpoint
@@ -192,7 +198,11 @@ presenter/recorder doubles (`ToolKitInteractionTests`), and the ToolKitPIM tool
 contracts — argument validation, draft construction, and pinned-locale output
 formatting — against in-memory store doubles, since a TCC prompt cannot be
 automated (`ToolKitPIMTests`; the framework-backed stores are a named host-app
-gap). It builds and passes on
+gap). The security-scoped file bodies (FR-101) are covered for the one path
+testable without a real grant — a non-scoped URL makes `startAccessing…` return
+false, exercising the wrapper's no-op degradation; real grant activation is a
+host-app gap. NFR-012 (suspension survival) rides the fresh-instance durability
+tests, which are exactly a suspend→terminate. It builds and passes on
 both macOS 27 and iOS 27
 (`xcodebuild -scheme WorkKit-Package -destination 'generic/platform=iOS' build`).
 
@@ -341,6 +351,35 @@ in-memory doubles), and `GenerationSchema` has no `Date` (so dates travel as ISO
   comment; and the `fetchReminders` continuation resume maps to `PIMReminder`
   inside the closure because `[EKReminder]` isn't Sendable. The fakes get the same
   treatment, with a comment, since they're single-threaded fixtures.
+
+### Two umbrellas, one body of tools — and the scoped-body seam
+
+`ToolKitForiOS` (FR-100) is `ToolKitForMac`'s mirror: the four domain targets are
+cross-platform, so both umbrellas are pure `@_exported` re-exports and the one
+platform difference lives inside `ToolKitFiles`. The difference is the security-
+scoped body (FR-101): on iOS a host's files live behind a UIDocumentPicker grant,
+so the file tools take an optional `securityScopedRoot` and wrap every call in
+`SecurityScopedAccess` — `startAccessingSecurityScopedResource()` around the
+operation, balanced `stop` after. Three choices are deliberate:
+
+- **Same interface, scoped construction.** The model-facing schemas are identical
+  to macOS (relative `path` under the root) — the README's promise that "prompts,
+  evals, and recorded runs transfer between your Mac and iPhone apps." The
+  platform difference is host construction, not the tool contract.
+- **No-op on non-scoped URLs.** `startAccessing…` returns `false` for an ordinary
+  URL, so the wrapper is free on macOS and the existing hosts are untouched (the
+  param defaults to nil). This is also the only scoped path a unit test can reach
+  — real grant activation needs a real grant, a named host-app gap.
+- **As-granted storage.** A scoped root is never standardized or
+  symlink-resolved; those transforms can invalidate the grant. The plain-root
+  canonicalization is untouched for the macOS path.
+
+NFR-012 (suspension survival) records a boundary rather than new machinery: the
+journal's per-event fsync and the checkpoint's atomic write already survive a
+suspend→terminate (that's what the fresh-instance durability tests model), and
+*resumption* — BGTaskScheduler, push-resumable — is the host's job because the
+Recorder is attach-only. The package's guarantee ends where the host's begins;
+nobody should read more into "suspension-safe" than that.
 
 ### Three executors, not eleven
 
