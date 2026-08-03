@@ -31,16 +31,30 @@ public struct SearchFilesTool: Tool, Sendable {
     """
 
     private let root: URL
+    private let securityScopedRoot: URL?
     private let maximumMatches: Int
     private let maximumFileSize: Int
 
-    public init(root: URL, maximumMatches: Int = 100, maximumFileSize: Int = 2_000_000) {
-        self.root = root.standardizedFileURL.resolvingSymlinksInPath()
+    public init(
+        root: URL,
+        maximumMatches: Int = 100,
+        maximumFileSize: Int = 2_000_000,
+        securityScopedRoot: URL? = nil
+    ) {
+        // REQ: FR-101 — see ReadFileTool: scoped roots are stored as-granted.
+        self.securityScopedRoot = securityScopedRoot
+        self.root = securityScopedRoot ?? root.standardizedFileURL.resolvingSymlinksInPath()
         self.maximumMatches = maximumMatches
         self.maximumFileSize = maximumFileSize
     }
 
     public func call(arguments: SearchFilesArguments) async throws -> String {
+        try await SecurityScopedAccess.withScopedAccess(to: securityScopedRoot) {
+            try await perform(arguments: arguments)
+        }
+    }
+
+    private func perform(arguments: SearchFilesArguments) async throws -> String {
         guard let regex = try? NSRegularExpression(pattern: arguments.pattern) else {
             throw FileToolError.invalidArguments("'\(arguments.pattern)' isn't a valid regular expression.")
         }

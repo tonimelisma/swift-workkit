@@ -4,12 +4,13 @@
 code works lives in [ENGINEERING.md](../engineering/ENGINEERING.md). Every feature
 here carries its permanent ID and the reason it's shaped the way it is, quoting Toni
 where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
-**Next free: FR-100 · NFR-012.**
+**Next free: FR-102 · NFR-013.**
 
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`,
-umbrella `ToolKitForMac`). 166 package tests (153 run unconditionally, plus 12
+umbrellas `ToolKitForMac`/`ToolKitForiOS`). 171 package tests (158 run
+unconditionally, plus 12
 `.env`-key-gated live provider/search smokes that self-skip without keys and 1
 device-gated on-device Apple model test that runs where hardware allows), green on
 both platforms. MIT. This repo is
@@ -222,6 +223,41 @@ exist on macOS 27 and iOS 27 (verified against both SDKs).
   sees what the tools print — the same read-before-write spirit as the file tools'
   ledger, adapted to a framework with no path namespace.
 
+### ToolKitForiOS: the iOS umbrella, and security-scoped file bodies
+
+The iOS half of the two-platform-toolkits decision (2026-07-19), shipped on the
+riffraff "iOS" row's trigger firing. *Why it was a riffraff row with a trigger:*
+an umbrella with no iOS consumer earns nothing — Toni's revival trigger was "a
+real iOS consumer exists," and his asking for it *is* that consumer.
+
+- **FR-100 — Implemented.** `ToolKitForiOS`: the mirror of `ToolKitForMac`,
+  re-exporting the four cross-platform domain targets (ToolKitFiles, ToolKitWeb,
+  ToolKitInteraction, ToolKitPIM) for iOS/iPadOS — one `.iOS` platform line
+  covers both. *Why pure re-export:* the domain targets already build on iOS
+  (NFR-010), so the umbrella is one import per platform, no new code.
+- **FR-101 — Implemented.** Security-scoped file bodies: all six file tools accept
+  a `securityScopedRoot` and activate the grant around every call
+  (`startAccessingSecurityScopedResource`/`stop`, balanced per call). *Why this
+  shape:* the README committed to it — "File tools have a plain-path body on
+  macOS and a security-scoped body on iOS behind the same interface." The
+  interface (names, `path`-relative schemas) is identical, so prompts, evals, and
+  recorded runs transfer between platforms; the iOS host hands a UIDocumentPicker
+  folder to the tools as the scoped root. A non-scoped URL makes the wrapper a
+  no-op (`start` returns `false`), so the macOS path is byte-for-byte unchanged.
+  The scoped root is stored as-granted — standardizing/symlink-resolving it can
+  invalidate the grant.
+- **NFR-012 — Implemented.** iOS suspension safety: when the host is suspended or
+  terminated, the Recorder's journal and checkpoint store retain all durable
+  state. *Why it was already true:* `FileRunJournal` fsyncs every event before
+  acknowledging and `FileCheckpointStore` writes atomically — a suspend→terminate
+  on iOS is a process kill, which those already survive (the "suspension-safe
+  checkpoint design is already done and costs nothing to keep" riffraff claim).
+  The ID rides the existing durability tests' display names. *Honest boundary:*
+  the package's durable primitives survive termination; resumption orchestration
+  (BGTaskScheduler, push-resumable) is a host's job — the Recorder is attach-only
+  and never owns the loop. No on-device suspension validation exists; no iOS host
+  lives in this repo.
+
 ## Deterministic testing
 
 - **Implemented.** `RuntimeTesting` ships `ScriptedLanguageModel` — agent behavior
@@ -265,6 +301,9 @@ by grep; a ✗ is an honest gap, not an oversight.
 | FR-097 | The system shall provide a `create_contact` tool that creates a contact with a name or organization and optional emails and phones. | ✓ | ✓ |
 | FR-098 | The system shall provide an `update_contact` tool that changes only the fields given on the contact identified by its stable identifier. | ✓ | ✓ |
 | FR-099 | The system shall provide a `delete_contact` tool that removes the contact identified by its stable identifier. | ✓ | ✓ |
+| FR-100 | The system shall provide a `ToolKitForiOS` product that re-exports the platform-true ToolKit set for iOS and iPadOS. | ✓ | ✓ iOS `xcodebuild` build |
+| FR-101 | When a file tool is constructed with a security-scoped root, the system shall activate the security-scoped grant before accessing the file and release it afterward. | ✓ | ✓ `FileToolScopedAccessTests` |
+| NFR-012 | When the host app is suspended or terminated by the system on iOS, the Recorder's journal and checkpoint store shall retain all durable state, so a resuming or relaunched host can continue from the last recorded position. | ✓ | ✓ `NFR-012:` durability tests |
 | NFR-005 | Every requirement shall be traceable to code and tests by its ID. | this table | — |
 | NFR-010 | The native Swift agent-runtime SPM package shall support iOS 27 and macOS 27 and accept any model conforming to Foundation Models `LanguageModel`, whether its executor uses a cloud API or on-device inference. | ✓ | ✓ `AppleOnDeviceLiveTests` (2026-07-20, on-device leg); dual-platform CI build proves the rest |
 | NFR-011 | When a provider stream ends without producing any assistant content, tool call, or reasoning, the system shall fail with a provider-named diagnostic rather than an opaque session error. | ✓ | ✓ `ToolCallTurnTests` |

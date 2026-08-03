@@ -65,7 +65,6 @@ Not scheduled, not deleted. Nothing here gets built until its trigger fires.
 | **Cross-provider eval matrix** (generated conformance table) | SPM-as-product marketing matters; the per-provider live tests (`ExecutorsLiveTests`) carry the package until then |
 | **API hardening**: DocC, `Examples/`, public conformance kit | A developer other than us asks how to use or certify against the package |
 | **Publication**: name decision confirmed, README re-audit, first public tag | OS 27 GA **and** demand signals |
-| **iOS**: `ToolKitForiOS`, security-scoped file bodies, suspension validation | A real iOS consumer exists; the suspension-safe checkpoint design is already done and costs nothing to keep |
 | **The studio** (local trace/replay/eval app) | PM-grade inspection demand in real use; needs Recorder completion |
 | **Composable run limits, restart-surviving interrupts, side-effect enforcement machinery** | Real use proves them ("the functionality and plans here got ahead of where I wanted to go") |
 | **Public attachment-API polish**: `recorder.instrument` as public API, profile-hook capture surface, corrective tool errors, `TranscriptUtilities` as polished public functions | The first external consumer of the package |

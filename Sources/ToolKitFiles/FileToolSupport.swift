@@ -95,3 +95,16 @@ enum OutputBudget {
         return "\(prefix)\n\n[Output truncated at \(maximumCharacters) characters. \(recoveryHint)]"
     }
 }
+
+// REQ: FR-101 — security-scoped file bodies. On iOS a host obtains a folder from
+// UIDocumentPicker; the grant must be activated before touching anything under it
+// and released after. On a non-scoped URL startAccessingSecurityScopedResource
+// returns false and the wrapper is a no-op — so the macOS path is unchanged. Start
+// and stop are balanced per call because the framework reference-counts grants.
+enum SecurityScopedAccess {
+    static func withScopedAccess<T>(to url: URL?, _ body: () async throws -> T) async rethrows -> T {
+        let didStart = url?.startAccessingSecurityScopedResource() ?? false
+        defer { if didStart { url?.stopAccessingSecurityScopedResource() } }
+        return try await body()
+    }
+}
