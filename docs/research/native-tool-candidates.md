@@ -1,5 +1,10 @@
 # Native tool candidates: Apple frameworks as agent tools (OS 27)
 
+> **Shipped 2026-08-02:** Tier 1 (location/places, OCR, notifications, system),
+> photo library, and weather — FR-102…FR-111 — per Toni ("do all of tier 1, photo
+> library, weather"). See PRODUCT.md "Native capabilities"; this doc remains the
+> origin record and the home of the unshipped Tier 2–4 evaluation.
+
 What Apple platform APIs could become `ToolKit*` tools, evaluated against the
 package's thesis, verified against the macOS 27 and iPhoneOS 27 SDKs on
 2026-08-02. This is research, not a roadmap — nothing here is scheduled, and
