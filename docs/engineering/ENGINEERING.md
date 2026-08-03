@@ -1,7 +1,7 @@
 # WorkKit — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-07-21.
+change: 2026-08-02.
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -61,7 +61,12 @@ Sources/
   ToolKitWeb/                               fetch_url, web_search (Brave-backed),
                                              NetworkSafety (SSRF host check)
   ToolKitInteraction/                       ask_user, update_plan
-  ToolKitForMac/                            umbrella: re-exports the three above
+  ToolKitPIM/                               list_calendars, calendar events CRUD,
+                                            reminders CRUD, contacts CRUD — EventKit
+                                            and Contacts behind injectable store
+                                            protocols (CalendarEventStore /
+                                            ReminderStore / ContactStore)
+  ToolKitForMac/                            umbrella: re-exports the four above
 Tests/
   RecorderTests/                            21 tests: durability, semantics
   ExecutorsTests/                           50 tests: SSE parsing, all three wire formats,
@@ -72,6 +77,8 @@ Tests/
   ToolKitWebTests/                          17 tests: Markdown rendering, SSRF, redirects,
                                              search (16 offline + 1 live, BRAVE_API_KEY-gated)
   ToolKitInteractionTests/                  6 tests: ask_user/update_plan validation
+  ToolKitPIMTests/                          33 tests: calendar/reminder/contact tool
+                                             contracts against in-memory store doubles
   ExecutorsLiveTests/                       12 tests: real providers + Apple on-device,
                                              through this package's own executors —
                                              11 key-gated (skip without `.env`), 1
@@ -90,7 +97,7 @@ docs/                                       specs
 | Durable-run substrate | `Recorder`: journal + checkpoints + archive replay, attach-only, no owned loop | Why below |
 | Min macOS | **27.0** | NFR-009, Why below |
 | Package platforms | **iOS 27 and macOS 27**, both build and test green | NFR-010, Why below |
-| Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella'd as `ToolKitForMac` | FR-074–083, tool-architecture.md |
+| Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`, umbrella'd as `ToolKitForMac` | FR-074–083, FR-086–099, tool-architecture.md |
 | Tool dependencies | ZIPFoundation (.docx is a zip), SwiftSoup (HTML→Markdown) — the only two external dependencies anywhere in the package, both pre-approved pure Swift | Package.swift |
 
 ## Architecture
@@ -162,7 +169,7 @@ func askUserValidatesQuestionCount() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-The package's own suite (`swift test` from the repo root) is 133 tests: transcript
+The package's own suite (`swift test` from the repo root) is 166 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
 (standing in for a process restart) including torn-tail and corrupt-checkpoint
@@ -179,9 +186,13 @@ Anthropic's reasoning-level→effort mapping against a stubbed `URLSession`, its
 `redacted_thinking` round-trip (parser, bridge accumulation, encoder ordering),
 the OpenAI Responses wire shape against frames captured live, the tool-call-turn
 buffering driven through a real `LanguageModelSession` on a scripted transport,
-and the GLM JWT construction against a fixed clock (`ExecutorsTests`), and
+and the GLM JWT construction against a fixed clock (`ExecutorsTests`),
 `ask_user`/`update_plan` validation against fake
-presenter/recorder doubles (`ToolKitInteractionTests`). It builds and passes on
+presenter/recorder doubles (`ToolKitInteractionTests`), and the ToolKitPIM tool
+contracts — argument validation, draft construction, and pinned-locale output
+formatting — against in-memory store doubles, since a TCC prompt cannot be
+automated (`ToolKitPIMTests`; the framework-backed stores are a named host-app
+gap). It builds and passes on
 both macOS 27 and iOS 27
 (`xcodebuild -scheme WorkKit-Package -destination 'generic/platform=iOS' build`).
 
@@ -297,6 +308,39 @@ in documents and folders, not terminals, so a shell tool's isolation story
 (needed before it could ship safely) stays deferred rather than built. Taken
 from Codex anyway: token-denominated output budgets with paging/truncation, and
 the effect/idempotency taxonomy tools carry as `ToolAnnotations` data.
+
+### PIM: full CRUD behind injectable stores, one cross-platform target
+
+ToolKitPIM is 14 typed tools (FR-086–099) over the three PIM domains, shaped by
+three verified facts: EventKit and Contacts exist identically on macOS 27 and iOS
+27 (so one target serves both — the "cross-platform domain target owning the
+schemas" the roadmap named), a TCC prompt cannot be automated (so the tools
+depend on `CalendarEventStore`/`ReminderStore`/`ContactStore` protocols that
+default to EventKit/Contacts-backed stores, and the offline suite runs against
+in-memory doubles), and `GenerationSchema` has no `Date` (so dates travel as ISO
+8601 strings parsed by the tools). Three consequences worth recording:
+
+- **Read-before-write by id.** The list tools print a stable `[id: …]` handle
+  (`eventIdentifier`/`calendarItemIdentifier`/`contact.identifier`); update and
+  delete take it, and update reads the current item first and overlays only the
+  patches — the file tools' ledger contract, adapted to a framework with no path
+  namespace. The model can only ever target what it was shown.
+- **The write surface is unshrunk.** Toni's scope call was categorical: "all the
+  fucking write tools. everything is in scope." So calendar events, reminders,
+  and contacts all ship create/update/delete (reminders split into idempotent
+  `complete_reminder`/`uncomplete_reminder` instead of a generic update, so the
+  journal-before-execute guard can never double-complete).
+- **Access failures name the fix.** Authorization is enforced inside the store
+  (status → request on `.notDetermined` → a named throw otherwise), and a denial
+  throws `PIMToolError.accessDenied` carrying the exact Info.plist usage-description
+  key. The README's "each tool documents the Info.plist keys its host app needs"
+  is enforced by the error string, not just the prose. Calendar write-only access
+  is honored: writes proceed, reads throw a named error.
+- **Sendability is documented, not fudged.** `EKEventStore`/`CNContactStore` are
+  documented thread-safe, so the concrete stores are `@unchecked Sendable` with a
+  comment; and the `fetchReminders` continuation resume maps to `PIMReminder`
+  inside the closure because `[EKReminder]` isn't Sendable. The fakes get the same
+  treatment, with a comment, since they're single-threaded fixtures.
 
 ### Three executors, not eleven
 

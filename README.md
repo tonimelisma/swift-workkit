@@ -77,6 +77,17 @@ File tools have a plain-path body on macOS and a security-scoped body on iOS
 behind the same interface. Tools that need user permission document the exact
 usage-description keys the host app must carry.
 
+**ToolKitPIM** covers Contacts, Calendar, and Reminders locally — EventKit and
+Contacts, no sign-in, works offline. Full CRUD: list calendars and events, create
+and edit your schedule, search and manage contacts, track and check off
+reminders. Every item the model is shown carries the stable `[id: …]` that the
+update/delete tools take back. TCC obligations are documented in each tool's
+description and named in the error when access is denied:
+`NSCalendarsFullAccessUsageDescription` (calendar),
+`NSRemindersFullAccessUsageDescription` (reminders), and
+`NSContactsUsageDescription` (contacts) — add the ones you use to your host app's
+Info.plist before wiring the tools in.
+
 ```swift
 import ToolKitForMac   // or ToolKitForiOS
 

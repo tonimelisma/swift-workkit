@@ -51,15 +51,6 @@ asks — **wave 2 = xlsx + pptx**, the fattest parsers for the rarest requests.
 Per-format specs (templates, styling scope, append-vs-create) researched at
 planning; xlsx/pptx *reading* settled with wave 2.
 
-## 3. ToolKitPIM: Contacts, Calendar, Reminders
-
-"What's on my calendar" — the local-first answer to Cowork's OAuth connectors:
-EventKit/Contacts frameworks, no sign-in, works offline. Cross-platform domain
-target owning the schemas; TCC usage-description obligations documented per tool;
-per-tool specs researched at planning.
-
----
-
 ## Riffraff — parked, each with its revival trigger
 
 Not scheduled, not deleted. Nothing here gets built until its trigger fires.

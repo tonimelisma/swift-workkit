@@ -4,12 +4,12 @@
 code works lives in [ENGINEERING.md](../engineering/ENGINEERING.md). Every feature
 here carries its permanent ID and the reason it's shaped the way it is, quoting Toni
 where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
-**Next free: FR-086 · NFR-012.**
+**Next free: FR-100 · NFR-012.**
 
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
-ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, umbrella
-`ToolKitForMac`). 133 package tests (120 run unconditionally, plus 12
+ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`,
+umbrella `ToolKitForMac`). 166 package tests (153 run unconditionally, plus 12
 `.env`-key-gated live provider/search smokes that self-skip without keys and 1
 device-gated on-device Apple model test that runs where hardware allows), green on
 both platforms. MIT. This repo is
@@ -178,6 +178,50 @@ package, runtime optional.
   expensive part and schemas must stay identical cross-platform (Toni: two
   platform toolkits, 2026-07-19).
 
+### ToolKitPIM: Contacts, Calendar, Reminders — full CRUD, local-first
+
+The roadmap's "What's on my calendar" answer, grown to the full read+write surface
+on Toni's scope call ("all the fucking write tools. everything is in scope").
+EventKit and Contacts, no sign-in, works offline — the local-first answer to
+Cowork's OAuth connectors. One cross-platform target, because both frameworks
+exist on macOS 27 and iOS 27 (verified against both SDKs).
+
+- **FR-086 — Implemented.** `list_calendars`: the user's event calendars or
+  reminder lists, with the titles and stable ids the write tools target, plus
+  read-only flags. The model-facing handle source for every calendar tool.
+- **FR-087 — Implemented.** `list_calendar_events`: events in a date range
+  (default today), sorted, count-capped, with stable ids. EventKit caps any range
+  at four years — documented in the tool. *Why default today:* the killer ask is
+  literally "What's on my calendar".
+- **FR-088/089/090 — Implemented.** `create_calendar_event`, `update_calendar_event`,
+  `delete_calendar_event`: full calendar CRUD. Update/delete take the id printed
+  by the list tool — the file tools' read-before-write contract applied to the
+  calendar. Update reads the current event first and overlays only what changed;
+  an empty location/notes clears.
+- **FR-091 — Implemented.** `list_reminders`: incomplete (default)/completed/all,
+  due-range filterable, sorted by due date (undated last), with stable ids.
+- **FR-092/093/094/095 — Implemented.** `add_reminder`, `complete_reminder`,
+  `uncomplete_reminder`, `delete_reminder`. Complete/uncomplete are idempotent —
+  the Recorder's journal-before-execute guard can never double-complete a reminder
+  that's already done.
+- **FR-096 — Implemented.** `search_contacts`: by name, email, or phone (ANDed
+  when combined), with stable ids.
+- **FR-097/098/099 — Implemented.** `create_contact`, `update_contact`,
+  `delete_contact`. A contact needs a name or an organization.
+- **TCC obligations, per framework — documented in each tool's description and
+  enforced by the error itself.** Calendar: `NSCalendarsFullAccessUsageDescription`;
+  Reminders: `NSRemindersFullAccessUsageDescription`; Contacts:
+  `NSContactsUsageDescription`. A denial names the exact key the host must add —
+  the README's "each tool documents the Info.plist keys its host app needs"
+  promise enforced at runtime, not just on paper.
+- *Why store seams:* the tools depend on `CalendarEventStore`/`ReminderStore`/
+  `ContactStore` protocols, defaulting to EventKit/Contacts-backed stores. A TCC
+  prompt cannot be automated, so the suite runs offline against fakes; the live
+  EventKit/Contacts happy path is a named host-app gap, not claimed as tested.
+- *Why ids in list output:* update/delete need a stable handle, and the model only
+  sees what the tools print — the same read-before-write spirit as the file tools'
+  ledger, adapted to a framework with no path namespace.
+
 ## Deterministic testing
 
 - **Implemented.** `RuntimeTesting` ships `ScriptedLanguageModel` — agent behavior
@@ -207,6 +251,20 @@ by grep; a ✗ is an honest gap, not an oversight.
 | FR-083 | The system shall provide a `web_search` tool: the provider's hosted search where the provider offers one, else a neutral Brave-backed search. | ✓ | ✓ stubbed + live (2026-07-20) |
 | FR-084 | When a provider streams assistant text and a tool call in the same generation, the system shall emit only the tool-call transcript entry, so the session runs the tool instead of failing. | ✓ | ✓ `ToolCallTurnTests` (through a real session) + live minimax/meta |
 | FR-085 | The system shall support OpenAI's Responses API as a distinct executor, completing a request → tool call → tool result → final response cycle for models that cannot tool-call on Chat Completions. | ✓ | ✓ `OpenAIResponsesTests` + live `gpt-5.6` |
+| FR-086 | The system shall provide a `list_calendars` tool that lists the user's event calendars or reminder lists with their titles and stable identifiers. | ✓ | ✓ |
+| FR-087 | The system shall provide a `list_calendar_events` tool that lists a user's events in a date range, sorted by start time, with stable identifiers. | ✓ | ✓ |
+| FR-088 | The system shall provide a `create_calendar_event` tool that creates an event with a title, start and end, and optional all-day, location, notes, and calendar. | ✓ | ✓ |
+| FR-089 | The system shall provide an `update_calendar_event` tool that changes only the fields given on the event identified by its stable identifier. | ✓ | ✓ |
+| FR-090 | The system shall provide a `delete_calendar_event` tool that removes the event identified by its stable identifier. | ✓ | ✓ |
+| FR-091 | The system shall provide a `list_reminders` tool that lists a user's reminders filtered by state and due date, sorted, with stable identifiers. | ✓ | ✓ |
+| FR-092 | The system shall provide an `add_reminder` tool that creates a reminder with a title and optional notes, due date, and list. | ✓ | ✓ |
+| FR-093 | The system shall provide a `complete_reminder` tool that marks the reminder identified by its stable identifier completed. | ✓ | ✓ |
+| FR-094 | The system shall provide an `uncomplete_reminder` tool that re-opens the completed reminder identified by its stable identifier. | ✓ | ✓ |
+| FR-095 | The system shall provide a `delete_reminder` tool that removes the reminder identified by its stable identifier. | ✓ | ✓ |
+| FR-096 | The system shall provide a `search_contacts` tool that finds contacts by name, email, or phone. | ✓ | ✓ |
+| FR-097 | The system shall provide a `create_contact` tool that creates a contact with a name or organization and optional emails and phones. | ✓ | ✓ |
+| FR-098 | The system shall provide an `update_contact` tool that changes only the fields given on the contact identified by its stable identifier. | ✓ | ✓ |
+| FR-099 | The system shall provide a `delete_contact` tool that removes the contact identified by its stable identifier. | ✓ | ✓ |
 | NFR-005 | Every requirement shall be traceable to code and tests by its ID. | this table | — |
 | NFR-010 | The native Swift agent-runtime SPM package shall support iOS 27 and macOS 27 and accept any model conforming to Foundation Models `LanguageModel`, whether its executor uses a cloud API or on-device inference. | ✓ | ✓ `AppleOnDeviceLiveTests` (2026-07-20, on-device leg); dual-platform CI build proves the rest |
 | NFR-011 | When a provider stream ends without producing any assistant content, tool call, or reasoning, the system shall fail with a provider-named diagnostic rather than an opaque session error. | ✓ | ✓ `ToolCallTurnTests` |
