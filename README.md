@@ -18,7 +18,7 @@ stands alone, and every dependency is an Apple framework.
 | Library | What it gives you | Depends on |
 |---|---|---|
 | **Executors** | Ready Foundation Models providers for the popular cloud LLMs that don't ship their own — DeepSeek, Grok, Kimi, Qwen, and more via one OpenAI-compatible executor, plus native executors for Anthropic and for GPT on OpenAI's Responses API. Wire quirks handled; provider capabilities *beyond* the FM API exposed | FoundationModels |
-| **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text), web fetch, Contacts, Calendar, Reminders, document creation (PDF, docx, xlsx, pptx). Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
+| **ToolKitForMac / ToolKitForiOS** | Ready-made native tools, one import per platform — files (including docx text and OCR), web fetch, Contacts, Calendar, Reminders, location & places, system info, local notifications, photos, weather, document creation (PDF, docx, xlsx, pptx). Each tool documents the Info.plist keys its host app needs | FoundationModels + the platform framework |
 | **Recorder** | Attach one line and every run is remembered: timestamps, usage, cost, and the *full untruncated* tool output the transcript never keeps. Oversized results reach the model budgeted, with a history tool to page back into the rest. Recordings replay as offline regression suites | FoundationModels |
 | **Testing** | Scripted models, virtual clocks, and fixture recorders. Agent behavior asserted deterministically, no network. Never links into shipping binaries | FoundationModels |
 | **MCP** | Model Context Protocol servers as plain FM tools for any session — no other library of ours required. Explicit schema conversion, never silent flattening | The one external dependency, opt-in |
@@ -90,6 +90,17 @@ description and named in the error when access is denied:
 `NSRemindersFullAccessUsageDescription` (reminders), and
 `NSContactsUsageDescription` (contacts) — add the ones you use to your host app's
 Info.plist before wiring the tools in.
+
+Beyond files, web, and PIM, ToolKitForMac / ToolKitForiOS carry the native
+capabilities wave: `get_location`/`geocode`/`search_places`/`directions_eta`
+(CoreLocation + MapKit — location needs `NSLocationWhenInUseUsageDescription`
+only when a tool asks for the current location), `ocr_image` (Vision, on-device,
+no permission), `system_info` (ProcessInfo + Network, read-only),
+`schedule_notification` (UserNotifications — the host requests authorization
+once; no Info.plist key), `search_photos`/`export_photo` (Photos —
+`NSPhotoLibraryUsageDescription`), and `get_weather` (WeatherKit — needs the
+`com.apple.developer.weatherkit` entitlement). Each tool that needs a permission
+names the exact key in its error when access is denied.
 
 ```swift
 import ToolKitForMac   // or ToolKitForiOS

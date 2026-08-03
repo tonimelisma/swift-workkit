@@ -57,10 +57,11 @@ Sources/
   RuntimeTesting/
     ScriptedLanguageModel.swift             closure-scripted LanguageModel double
   ToolKitFiles/                             read_file, list_folder, find_files,
-                                             search_files, write_file, edit_file —
-                                             each accepts an optional
-                                             securityScopedRoot (FR-101) and wraps
-                                             calls in SecurityScopedAccess
+                                             search_files, write_file, edit_file,
+                                             ocr_image (Vision) — each file tool
+                                             accepts an optional securityScopedRoot
+                                             (FR-101) and wraps calls in
+                                             SecurityScopedAccess
   ToolKitWeb/                               fetch_url, web_search (Brave-backed),
                                              NetworkSafety (SSRF host check)
   ToolKitInteraction/                       ask_user, update_plan
@@ -69,8 +70,19 @@ Sources/
                                             and Contacts behind injectable store
                                             protocols (CalendarEventStore /
                                             ReminderStore / ContactStore)
-  ToolKitForMac/                            umbrella: re-exports the four above
-  ToolKitForiOS/                            umbrella: re-exports the four above
+  ToolKitPlaces/                            get_location, geocode, search_places,
+                                            directions_eta — CoreLocation + MapKit
+                                            behind PlaceLookup (FR-102–105)
+  ToolKitSystem/                            system_info — ProcessInfo + Network
+                                            (FR-107)
+  ToolKitNotifications/                     schedule_notification — UserNotifications
+                                            behind NotificationScheduling (FR-108)
+  ToolKitPhotos/                            search_photos, export_photo — Photos
+                                            behind PhotoLibrary (FR-109–110)
+  ToolKitWeather/                           get_weather — WeatherKit behind
+                                            WeatherProviding (FR-111)
+  ToolKitForMac/                            umbrella: re-exports the nine above
+  ToolKitForiOS/                            umbrella: re-exports the nine above
                                             (iOS/iPadOS; see ToolKitForiOS.swift)
 Tests/
   RecorderTests/                            21 tests: durability, semantics
@@ -83,8 +95,14 @@ Tests/
   ToolKitInteractionTests/                  6 tests: ask_user/update_plan validation
   ToolKitPIMTests/                          33 tests: calendar/reminder/contact tool
                                              contracts against in-memory store doubles
-  ToolKitFilesTests/                        32 tests: paging, docx, glob, read-before-write,
-                                             security-scoped-root no-op path (FR-101)
+  ToolKitFilesTests/                        35 tests: paging, docx, glob, read-before-write,
+                                             security-scoped-root no-op path (FR-101),
+                                             OCR of generated bitmaps (FR-106)
+  ToolKitPlacesTests/                       7 tests: places contracts against a fake lookup
+  ToolKitSystemTests/                       1 test: system_info format with injected network
+  ToolKitNotificationsTests/               4 tests: trigger construction + validation
+  ToolKitPhotosTests/                       4 tests: search/export contracts + export I/O
+  ToolKitWeatherTests/                      3 tests: weather format + coordinate validation
   ExecutorsLiveTests/                       12 tests: real providers + Apple on-device,
                                              through this package's own executors —
                                              11 key-gated (skip without `.env`), 1
@@ -103,7 +121,7 @@ docs/                                       specs
 | Durable-run substrate | `Recorder`: journal + checkpoints + archive replay, attach-only, no owned loop | Why below |
 | Min macOS | **27.0** | NFR-009, Why below |
 | Package platforms | **iOS 27 and macOS 27**, both build and test green | NFR-010, Why below |
-| Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`, umbrella'd as `ToolKitForMac`/`ToolKitForiOS` | FR-074–083, FR-086–099, FR-100/101, tool-architecture.md |
+| Tools | `ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`, `ToolKitPlaces`, `ToolKitSystem`, `ToolKitNotifications`, `ToolKitPhotos`, `ToolKitWeather`, umbrella'd as `ToolKitForMac`/`ToolKitForiOS` | FR-074–083, FR-086–099, FR-100–111, tool-architecture.md |
 | Tool dependencies | ZIPFoundation (.docx is a zip), SwiftSoup (HTML→Markdown) — the only two external dependencies anywhere in the package, both pre-approved pure Swift | Package.swift |
 
 ## Architecture
@@ -175,7 +193,7 @@ func askUserValidatesQuestionCount() async throws { ... }
 see [CLAUDE.md](../../CLAUDE.md) § Traceability for why there are no per-requirement
 tags.
 
-The package's own suite (`swift test` from the repo root) is 171 tests: transcript
+The package's own suite (`swift test` from the repo root) is 193 tests: transcript
 round-trips and provider-switch metadata stripping, JSON-Schema→`GenerationSchema`
 conversion, `FileRunJournal`/`FileCheckpointStore` durability across a fresh instance
 (standing in for a process restart) including torn-tail and corrupt-checkpoint
@@ -202,7 +220,15 @@ gap). The security-scoped file bodies (FR-101) are covered for the one path
 testable without a real grant — a non-scoped URL makes `startAccessing…` return
 false, exercising the wrapper's no-op degradation; real grant activation is a
 host-app gap. NFR-012 (suspension survival) rides the fresh-instance durability
-tests, which are exactly a suspend→terminate. It builds and passes on
+tests, which are exactly a suspend→terminate. The native-capabilities wave
+(FR-102–111) is tested the same way: each product's tools run against fake
+seams (`PlaceLookup`, `NotificationScheduling`, `PhotoLibrary`,
+`WeatherProviding`), because live location, photo data, delivered notifications,
+and WeatherKit each need TCC/entitlement/hardware nothing can automate — named
+host-app gaps, not hidden. The OCR test (FR-106) is the one real-framework happy
+path in the wave: it renders large bold text with Core Text and runs on-device
+Vision on it (the first invocation pays ~60s model warmup; the residual
+recognition flakiness is named). It builds and passes on
 both macOS 27 and iOS 27
 (`xcodebuild -scheme WorkKit-Package -destination 'generic/platform=iOS' build`).
 
@@ -380,6 +406,34 @@ suspend→terminate (that's what the fresh-instance durability tests model), and
 *resumption* — BGTaskScheduler, push-resumable — is the host's job because the
 Recorder is attach-only. The package's guarantee ends where the host's begins;
 nobody should read more into "suspension-safe" than that.
+
+### Native capabilities: one product per framework, seams for the unautomatable
+
+The FR-102–111 wave (places, OCR, system, notifications, photos, weather) is the
+research-tiered candidates shipped on Toni's instruction. Three structural
+decisions are worth recording:
+
+- **One product per domain framework, and one tool in ToolKitFiles.** Places is
+  CoreLocation+MapKit, Photos is Photos, Weather is WeatherKit, etc. — the
+  "no module gets a second job" rule applied to new domains. `ocr_image` breaks
+  the one-to-one only in the honest direction: it is a file tool (path within the
+  root, security-scoped access, read_file's deferred image gap), so it lives with
+  the file tools and reuses their access plumbing rather than inventing a module
+  for one tool.
+- **The seam pattern extends to every unautomatable path.** The same protocol-and-
+  fake discipline PIM used for TCC covers live location (`PlaceLookup`), delivered
+  notifications (`NotificationScheduling`), photo data (`PhotoLibrary`), and
+  weather (`WeatherProviding`). The one exception is the OCR test, which runs real
+  on-device Vision on a Core-Text-rendered bitmap — the first real-framework happy
+  path in the package's ToolKit tests, its ~60s first-call warmup and residual
+  recognition flakiness named rather than hidden.
+- **The MapKit geocoding requests are a deprecation-driven choice.** `CLGeocoder`
+  is deprecated on OS 26+ ("Use MKGeocodingRequest"), so geocoding uses the
+  replacements (`init?(addressString:)`/`init?(location:)`, `mapItems` async
+  getter). Weather's entitlement is the one cost the research flagged and the one
+  the tool refuses to hide: a service failure throws `unavailable`, which names
+  `com.apple.developer.weatherkit` — the tool cannot request an entitlement, only
+  the host can carry it.
 
 ### Three executors, not eleven
 

@@ -4,13 +4,14 @@
 code works lives in [ENGINEERING.md](../engineering/ENGINEERING.md). Every feature
 here carries its permanent ID and the reason it's shaped the way it is, quoting Toni
 where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
-**Next free: FR-102 · NFR-013.**
+**Next free: FR-112 · NFR-013.**
 
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
 products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
 ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`,
-umbrellas `ToolKitForMac`/`ToolKitForiOS`). 171 package tests (158 run
-unconditionally, plus 12
+`ToolKitPlaces`, `ToolKitSystem`, `ToolKitNotifications`, `ToolKitPhotos`,
+`ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 193 package tests
+(180 run unconditionally, plus 12
 `.env`-key-gated live provider/search smokes that self-skip without keys and 1
 device-gated on-device Apple model test that runs where hardware allows), green on
 both platforms. MIT. This repo is
@@ -258,6 +259,55 @@ real iOS consumer exists," and his asking for it *is* that consumer.
   and never owns the loop. No on-device suspension validation exists; no iOS host
   lives in this repo.
 
+### Native capabilities: Places, OCR, System, Notifications, Photos, Weather
+
+The Tier 1 + photo-library + weather candidates from research
+([native-tool-candidates.md](../research/native-tool-candidates.md)), on Toni's
+instruction: "do all of tier 1, photo library, weather." Every API was
+probe-compiled against both OS 27 SDKs before planning — the research's evidence,
+not assumption. One product per domain framework; `ocr_image` lives in
+ToolKitFiles because it is a file tool.
+
+- **FR-102 — Implemented.** `get_location` (ToolKitPlaces, CoreLocation): a
+  one-shot fix via `CLLocationUpdate.liveUpdates()`. TCC:
+  `NSLocationWhenInUseUsageDescription`. Privacy-flagged as consequential.
+- **FR-103 — Implemented.** `geocode` (ToolKitPlaces, MapKit): forward/reverse
+  geocoding. *Why MapKit's requests:* `CLGeocoder` is deprecated on OS 26+
+  ("Use MKGeocodingRequest"). Verified, not assumed.
+- **FR-104 — Implemented.** `search_places` (ToolKitPlaces, MapKit):
+  `MKLocalSearch`. No permission needed.
+- **FR-105 — Implemented.** `directions_eta` (ToolKitPlaces, MapKit):
+  `MKDirections.calculateETA`. Addresses resolve through geocoding; a missing
+  origin uses the current location (which needs permission only then).
+- **FR-106 — Implemented.** `ocr_image` (ToolKitFiles, Vision): text out of an
+  image, filling the gap read_file left when it deferred images (FR-074). Returns
+  String — the Tool protocol's output — on-device, no network. *Why in
+  ToolKitFiles:* it is a file tool (path within the root, security-scoped access).
+- **FR-107 — Implemented.** `system_info` (ToolKitSystem): OS/hardware/memory/
+  disk/power/thermal/network via ProcessInfo, FileManager, and `NWPathMonitor`
+  (injected for test determinism). Read-only.
+- **FR-108 — Implemented.** `schedule_notification` (ToolKitNotifications,
+  UserNotifications): the agent's real output channel — no server, no push
+  certificate, no Info.plist key; the host requests authorization once.
+- **FR-109 — Implemented.** `search_photos` (ToolKitPhotos, Photos): read-only
+  photo-library discovery by type/date/album, with stable ids. TCC:
+  `NSPhotoLibraryUsageDescription` (`.limited` grants accepted).
+- **FR-110 — Implemented.** `export_photo` (ToolKitPhotos): copies one photo's
+  original bytes into the host's workspace root. *Why a copy, not a write:* the
+  photo library is read-only here — delete/move/album were explicitly out of
+  scope in the research.
+- **FR-111 — Implemented.** `get_weather` (ToolKitWeather, WeatherKit): current
+  conditions + a short forecast for explicit coordinates. *The honest cost the
+  research flagged:* it needs the `com.apple.developer.weatherkit` entitlement —
+  a developer-setup ceremony, the opposite of BYOK-free — and a service failure
+  names it. Offline-tested with fakes; live is a host-app gap.
+- **Seams, everywhere.** Every product's tools depend on a protocol
+  (`PlaceLookup`, `NotificationScheduling`, `PhotoLibrary`, `WeatherProviding`)
+  defaulting to a framework-backed implementation. Live location, photo data, a
+  delivered notification, and WeatherKit all need TCC/entitlement/hardware nothing
+  can automate; the offline suite runs against fakes and the live paths are named
+  host-app gaps, never claimed as tested.
+
 ## Deterministic testing
 
 - **Implemented.** `RuntimeTesting` ships `ScriptedLanguageModel` — agent behavior
@@ -304,6 +354,16 @@ by grep; a ✗ is an honest gap, not an oversight.
 | FR-100 | The system shall provide a `ToolKitForiOS` product that re-exports the platform-true ToolKit set for iOS and iPadOS. | ✓ | ✓ iOS `xcodebuild` build |
 | FR-101 | When a file tool is constructed with a security-scoped root, the system shall activate the security-scoped grant before accessing the file and release it afterward. | ✓ | ✓ `FileToolScopedAccessTests` |
 | NFR-012 | When the host app is suspended or terminated by the system on iOS, the Recorder's journal and checkpoint store shall retain all durable state, so a resuming or relaunched host can continue from the last recorded position. | ✓ | ✓ `NFR-012:` durability tests |
+| FR-102 | The system shall provide a `get_location` tool that returns the device's current coordinates and accuracy. | ✓ | ✓ |
+| FR-103 | The system shall provide a `geocode` tool that converts between an address and coordinates in either direction. | ✓ | ✓ |
+| FR-104 | The system shall provide a `search_places` tool that finds nearby places by query. | ✓ | ✓ |
+| FR-105 | The system shall provide a `directions_eta` tool that returns the travel time and distance to a destination. | ✓ | ✓ |
+| FR-106 | The system shall provide an `ocr_image` tool that reads the text out of an image file. | ✓ | ✓ |
+| FR-107 | The system shall provide a `system_info` tool that reports the device's OS, hardware, memory, disk, power, thermal state, and network reachability. | ✓ | ✓ |
+| FR-108 | The system shall provide a `schedule_notification` tool that schedules a local notification at a delay or date. | ✓ | ✓ |
+| FR-109 | The system shall provide a `search_photos` tool that lists photo-library assets filtered by type, date range, and album, with stable identifiers. | ✓ | ✓ |
+| FR-110 | The system shall provide an `export_photo` tool that copies a photo's original data into the host's workspace root by its stable identifier. | ✓ | ✓ |
+| FR-111 | The system shall provide a `get_weather` tool that returns current conditions and a short forecast for given coordinates. | ✓ | ✓ |
 | NFR-005 | Every requirement shall be traceable to code and tests by its ID. | this table | — |
 | NFR-010 | The native Swift agent-runtime SPM package shall support iOS 27 and macOS 27 and accept any model conforming to Foundation Models `LanguageModel`, whether its executor uses a cloud API or on-device inference. | ✓ | ✓ `AppleOnDeviceLiveTests` (2026-07-20, on-device leg); dual-platform CI build proves the rest |
 | NFR-011 | When a provider stream ends without producing any assistant content, tool call, or reasoning, the system shall fail with a provider-named diagnostic rather than an opaque session error. | ✓ | ✓ `ToolCallTurnTests` |

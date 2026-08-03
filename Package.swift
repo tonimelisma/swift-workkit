@@ -21,6 +21,11 @@ let package = Package(
         .library(name: "ToolKitWeb", targets: ["ToolKitWeb"]),
         .library(name: "ToolKitInteraction", targets: ["ToolKitInteraction"]),
         .library(name: "ToolKitPIM", targets: ["ToolKitPIM"]),
+        .library(name: "ToolKitPlaces", targets: ["ToolKitPlaces"]),
+        .library(name: "ToolKitSystem", targets: ["ToolKitSystem"]),
+        .library(name: "ToolKitNotifications", targets: ["ToolKitNotifications"]),
+        .library(name: "ToolKitPhotos", targets: ["ToolKitPhotos"]),
+        .library(name: "ToolKitWeather", targets: ["ToolKitWeather"]),
         .library(name: "ToolKitForMac", targets: ["ToolKitForMac"]),
         .library(name: "ToolKitForiOS", targets: ["ToolKitForiOS"]),
     ],
@@ -51,16 +56,31 @@ let package = Package(
         // ToolVocabulary dependency — it touches no effect/budget metadata —
         // and no external deps: the frameworks are Apple's.
         .target(name: "ToolKitPIM"),
+        // The native-capabilities wave (FR-102…111): one small domain product per
+        // framework, all cross-platform (probe-verified on both OS 27 SDKs).
+        .target(name: "ToolKitPlaces"),        // CoreLocation + MapKit
+        .target(name: "ToolKitSystem"),        // ProcessInfo + Network
+        .target(name: "ToolKitNotifications"), // UserNotifications
+        .target(name: "ToolKitPhotos"),        // Photos
+        .target(name: "ToolKitWeather"),       // WeatherKit + CoreLocation
         .target(
             name: "ToolKitForMac",
-            dependencies: ["ToolKitFiles", "ToolKitWeb", "ToolKitInteraction", "ToolKitPIM"]
+            dependencies: [
+                "ToolKitFiles", "ToolKitWeb", "ToolKitInteraction", "ToolKitPIM",
+                "ToolKitPlaces", "ToolKitSystem", "ToolKitNotifications",
+                "ToolKitPhotos", "ToolKitWeather",
+            ]
         ),
         // ToolKitForiOS mirrors ToolKitForMac for iOS/iPadOS (one .iOS platform
         // line covers both): the domain targets are cross-platform, so the
         // umbrella is pure re-export — see ToolKitForiOS.swift.
         .target(
             name: "ToolKitForiOS",
-            dependencies: ["ToolKitFiles", "ToolKitWeb", "ToolKitInteraction", "ToolKitPIM"]
+            dependencies: [
+                "ToolKitFiles", "ToolKitWeb", "ToolKitInteraction", "ToolKitPIM",
+                "ToolKitPlaces", "ToolKitSystem", "ToolKitNotifications",
+                "ToolKitPhotos", "ToolKitWeather",
+            ]
         ),
         .testTarget(
             name: "RecorderTests",
@@ -89,6 +109,26 @@ let package = Package(
         .testTarget(
             name: "ToolKitPIMTests",
             dependencies: ["ToolKitPIM"]
+        ),
+        .testTarget(
+            name: "ToolKitPlacesTests",
+            dependencies: ["ToolKitPlaces"]
+        ),
+        .testTarget(
+            name: "ToolKitSystemTests",
+            dependencies: ["ToolKitSystem"]
+        ),
+        .testTarget(
+            name: "ToolKitNotificationsTests",
+            dependencies: ["ToolKitNotifications"]
+        ),
+        .testTarget(
+            name: "ToolKitPhotosTests",
+            dependencies: ["ToolKitPhotos"]
+        ),
+        .testTarget(
+            name: "ToolKitWeatherTests",
+            dependencies: ["ToolKitWeather"]
         ),
         // Gated live-provider smoke tests hitting real endpoints — see
         // Tests/ExecutorsLiveTests/LiveTestSupport.swift for the run command and gating
