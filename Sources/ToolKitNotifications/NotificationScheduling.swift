@@ -33,8 +33,10 @@ public enum ToolNotificationsError: LocalizedError, Equatable, Sendable {
 }
 
 /// UNUserNotificationCenter is documented thread-safe; the scheduler is
-/// stateless beyond that shared instance.
-public struct UserNotificationCenterScheduler: NotificationScheduling, @unchecked Sendable {
+/// stateless beyond that shared instance. The struct has no stored state, so
+/// the implicit `Sendable` conformance holds — no `@unchecked` escape hatch
+/// needed (review top-up E).
+public struct UserNotificationCenterScheduler: NotificationScheduling, Sendable {
     public init() {}
 
     public func requestAuthorization() async throws {

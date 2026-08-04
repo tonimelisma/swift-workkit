@@ -10,8 +10,8 @@ WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) wi
 products `Recorder`, `Executors`, `ToolVocabulary`, `ToolSupport`, `RuntimeTesting`,
 and the ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`,
 `ToolKitPIM`, `ToolKitPlaces`, `ToolKitSystem`, `ToolKitNotifications`,
-`ToolKitPhotos`, `ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 206
-package tests (193 run unconditionally, plus 12
+`ToolKitPhotos`, `ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 211
+package tests (198 run unconditionally, plus 12
 `.env`-key-gated live provider/search smokes that self-skip without keys and 1
 device-gated on-device Apple model test that runs where hardware allows), green on
 both platforms. MIT. This repo is
@@ -302,18 +302,34 @@ ToolKitFiles because it is a file tool.
   opaque ETA failure. Service failures (`MKDirections`, geocoding) surface as
   `ToolPlacesError.serviceFailure`, not raw framework errors.
 - **FR-106 — Implemented.** `ocr_image` (ToolKitFiles, Vision): text out of an
-  image, filling the gap read_file left when it deferred images (FR-074). Returns
-  String — the Tool protocol's output — on-device, no network. *Why in
-  ToolKitFiles:* it is a file tool (path within the root, security-scoped access).
+  image, filling the gap read_file left when it deferred images (FR-074) pledge.
+  Returns String — the Tool protocol's output — on-device, no network. *Why in
+  ToolKitFiles:* it is a file tool (path within the root, security-scoped
+  access). *Cooperative-pool offload* (2026-08-03 review top-up E): the
+  synchronous `VNImageRequestHandler.perform` — including the ~60s first-call
+  warmup — runs inside a `Task.detached(priority: .userInitiated)`. Reading
+  `request.results` happens inside that task too, since the Vision types aren't
+  `Sendable`; only the produced `String` crosses the isolation boundary.
 - **FR-107 — Implemented.** `system_info` (ToolKitSystem): OS/hardware/memory/
   disk/power/thermal/network via ProcessInfo, FileManager, and `NWPathMonitor`
   (injected for test determinism). Read-only. The network reachability read has
   a 5-second timeout (2026-08-03 review top-up D) — if `NWPathMonitor`'s async
   sequence doesn't emit within that window (unusual hardware state), the row
-  returns `unknown` rather than wedging the agent loop.
+  returns `unknown` rather than wedging the agent loop. The disk row reports
+  the *system volume* (`URL(fileURLWithPath: "/")`) on both platforms
+  (2026-08-03 review top-up E), not the iOS app's container quota — a model
+  reading "Disk: 2 GB free" on iOS otherwise mistakes the container for the
+  device and declines a 3 GB file the device would in fact fit.
 - **FR-108 — Implemented.** `schedule_notification` (ToolKitNotifications,
   UserNotifications): the agent's real output channel — no server, no push
   certificate, no Info.plist key; the host requests authorization once.
+  *Hardening (2026-08-03 review top-up E):* title capped at 100 chars, body at
+  200; `time_interval_seconds` capped at 24h (86_400s), `date` at 30 days out.
+  All four caps throw named errors so the model gets feedback rather than the
+  silent truncation UN does for length. Optional caller-supplied `id` for
+  de-dupe — `UNNotificationRequest`'s documented replace-by-identifier
+  semantics kick in, so a runaway loop can dedupe rather than filling
+  Apple's 64-per-app cap. Title is trimmed before scheduling.
 - **FR-109 — Implemented.** `search_photos` (ToolKitPhotos, Photos): read-only
   photo-library discovery by type/date/album, with stable ids. TCC:
   `NSPhotoLibraryUsageDescription` (`.limited` grants accepted).
