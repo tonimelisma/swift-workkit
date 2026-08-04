@@ -10,8 +10,8 @@ WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) wi
 products `Recorder`, `Executors`, `ToolVocabulary`, `ToolSupport`, `RuntimeTesting`,
 and the ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`,
 `ToolKitPIM`, `ToolKitPlaces`, `ToolKitSystem`, `ToolKitNotifications`,
-`ToolKitPhotos`, `ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 201
-package tests (188 run unconditionally, plus 12
+`ToolKitPhotos`, `ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 206
+package tests (193 run unconditionally, plus 12
 `.env`-key-gated live provider/search smokes that self-skip without keys and 1
 device-gated on-device Apple model test that runs where hardware allows), green on
 both platforms. MIT. This repo is
@@ -289,15 +289,28 @@ ToolKitFiles because it is a file tool.
 - **FR-104 — Implemented.** `search_places` (ToolKitPlaces, MapKit):
   `MKLocalSearch`. No permission needed.
 - **FR-105 — Implemented.** `directions_eta` (ToolKitPlaces, MapKit):
-  `MKDirections.calculateETA`. Addresses resolve through geocoding; a missing
-  origin uses the current location (which needs permission only then).
+  `MKDirections.calculateETA`. The endpoint takes three forms — address,
+  coordinates, or omitted (origin only) which resolves to current location.
+  *Why the RouteEndpoint refactor (2026-08-03 review top-up D):* the address
+  path used to pre-geocode to coordinates in the tool and then reconstruct an
+  `MKMapItem` in the lookup via the deprecated `MKPlacemark.init(coordinate:)`.
+  The lookup now handles geocoding itself, reusing MapKit's own `MKMapItem`
+  for the address path (no deprecation warning); the coordinate-only path
+  keeps the deprecated init with a named-gap comment until Apple ships a
+  replacement. *TCC:* a missing origin runs the same authorization ladder as
+  `get_location` — a denial throws `.accessDenied` rather than surfacing as an
+  opaque ETA failure. Service failures (`MKDirections`, geocoding) surface as
+  `ToolPlacesError.serviceFailure`, not raw framework errors.
 - **FR-106 — Implemented.** `ocr_image` (ToolKitFiles, Vision): text out of an
   image, filling the gap read_file left when it deferred images (FR-074). Returns
   String — the Tool protocol's output — on-device, no network. *Why in
   ToolKitFiles:* it is a file tool (path within the root, security-scoped access).
 - **FR-107 — Implemented.** `system_info` (ToolKitSystem): OS/hardware/memory/
   disk/power/thermal/network via ProcessInfo, FileManager, and `NWPathMonitor`
-  (injected for test determinism). Read-only.
+  (injected for test determinism). Read-only. The network reachability read has
+  a 5-second timeout (2026-08-03 review top-up D) — if `NWPathMonitor`'s async
+  sequence doesn't emit within that window (unusual hardware state), the row
+  returns `unknown` rather than wedging the agent loop.
 - **FR-108 — Implemented.** `schedule_notification` (ToolKitNotifications,
   UserNotifications): the agent's real output channel — no server, no push
   certificate, no Info.plist key; the host requests authorization once.

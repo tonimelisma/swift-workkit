@@ -1,10 +1,9 @@
 # WorkKit — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-08-03 (review top-up C: ToolKitPhotos path sanitization for
-`export_photo`, dropping `.concurrent` from `SystemPhotoLibrary.search`,
-throwing-continuation for `assetData`, `FileToolPathPhotos` dedup via the
-`ToolKitFiles` dep).
+change: 2026-08-03 (review top-up D: ToolKitPlaces RouteEndpoint refactor for
+the directionsETA deprecation, structured `serviceFailure` on MapKit errors, TCC
+ladder on the no-origin ETA path, 5s `NWPathMonitor` timeout in `system_info`).
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -113,8 +112,12 @@ ToolKitPIMTests/                          39 tests: calendar events, reminders,
   ToolKitFilesTests/                        35 tests: paging, docx, glob, read-before-write,
                                              security-scoped-root no-op path (FR-101),
                                              OCR of generated bitmaps (FR-106)
-  ToolKitPlacesTests/                       7 tests: places contracts against a fake lookup
-  ToolKitSystemTests/                       1 test: system_info format with injected network
+ToolKitPlacesTests/                       11 tests: places contracts against a fake lookup,
+                                           including the RouteEndpoint form preserved
+                                           through directions_eta (address / coordinates /
+                                           currentLocation) and serviceFailure surfacing
+ToolKitSystemTests/                       2 tests: system_info format with injected network,
+                                           and the NetworkStatus 5s timeout fallback
   ToolKitNotificationsTests/               4 tests: trigger construction + validation
   ToolKitPhotosTests/                       6 tests: search/export contracts, export
                                            I/O, path-traversal rejection in
@@ -493,6 +496,35 @@ decisions are worth recording:
   asset not downloaded, network error, cancellation) now surfaces as
   `ToolPhotosError.exportFailed` with the framework's own message rather than
   silently resuming with a partial buffer that the host would write.
+- **`directions_eta` takes a `RouteEndpoint`, not pre-geocoded coordinates.**
+  The pre-2026-08-03 shape forced the tool to geocode an address to coordinates
+  and then forced the lookup to reconstruct an `MKMapItem` from those coordinates
+  through the deprecated `MKPlacemark.init(coordinate:)` / `MKMapItem.init(placemark:)`
+  chain — the source of three build warnings and a brittle hand-off. The refactor
+  introduces `RouteEndpoint = .currentLocation | .coordinates | .address`; the
+  tool hands the model's chosen form over unchanged, and the lookup handles
+  geocoding via MapKit's own `MKGeocodingRequest.mapItems` — reusing the
+  `MKMapItem` MapKit returns instead of reconstructing one. The address path no
+  longer emits a deprecation warning. The `.coordinates` path keeps the
+  deprecated init with a documented known-gap comment: Apple deprecated
+  `MKPlacemark(coordinate:)` in OS 26+ ("use `MKMapItem.location` /
+  `.address` / `.addressRepresentations` instead") without shipping a public
+  replacement for the coordinate-only construction; the warning stays until
+  they do, and the gap is named in code so the next SDK seed doesn't surprise
+  the read. The `.currentLocation` path runs the same TCC authorization
+  ladder as `get_location` (a denial throws `.accessDenied` instead of letting
+  `MKMapItem.forCurrentLocation()` fail opaquely inside `MKDirections`).
+  `MKDirections`/`MKGeocodingRequest`/`MKLocalSearch` errors now surface as
+  `ToolPlacesError.serviceFailure` rather than leaking raw through the tool —
+  the case was defined before but never constructed.
+- **`NetworkStatus` has a 5s timeout.** The pre-2026-08-03 shape iterated
+  `NWPathMonitor`'s AsyncSequence with nothing wrapping it; if the monitor
+  didn't emit (unusual hardware state, no queue started), `system_info`
+  would hang the agent loop indefinitely. The fix wraps the iteration in a
+  `withTaskGroup` with a 5s sleeper; on timeout the network row returns
+  `"unknown"` rather than hanging. The testable variant takes a configurable
+  timeout and a generic `AsyncSequence<NWPath>` so a fake that never emits
+  asserts the fallback within milliseconds.
 
 ### Three executors, not eleven
 

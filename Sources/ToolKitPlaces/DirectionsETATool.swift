@@ -44,8 +44,9 @@ public struct DirectionsETATool: Tool, Sendable {
     Get the travel time and distance to a destination, from an optional origin \
     (default: the device's current location). The destination is an address or \
     to_latitude/to_longitude; the origin is an address, from_latitude/from_longitude, \
-    or omitted. Requires the host app's NSLocationWhenInUseUsageDescription only \
-    when no explicit origin is given.
+    or omitted. Distance is in kilometers, travel time in minutes. Requires \
+    the host app's NSLocationWhenInUseUsageDescription only when no explicit \
+    origin is given.
     """
 
     private let lookup: any PlaceLookup
@@ -55,49 +56,31 @@ public struct DirectionsETATool: Tool, Sendable {
     }
 
     public func call(arguments: DirectionsETAArguments) async throws -> String {
-        let destination = try await resolveCoordinate(
-            address: arguments.to.nilIfEmpty,
-            latitude: arguments.to_latitude,
-            longitude: arguments.to_longitude,
-            mode: "destination"
-        )
-        let origin: LocationReading?
-        if let fromLatitude = arguments.from_latitude, let fromLongitude = arguments.from_longitude {
-            origin = LocationReading(
-                latitude: fromLatitude, longitude: fromLongitude,
-                horizontalAccuracy: 0, timestamp: .distantPast
-            )
-        } else if let fromAddress = arguments.from.nilIfEmpty {
-            origin = try await geocodeToReading(fromAddress)
-        } else {
-            origin = nil
-        }
-        let eta = try await lookup.directionsETA(from: origin, toLatitude: destination.latitude, toLongitude: destination.longitude)
+        let destination = try resolveDestination(arguments)
+        let origin = try resolveOrigin(arguments)
+        let eta = try await lookup.directionsETA(from: origin, to: destination)
         let transport = eta.transportType.map { " (\($0))" } ?? ""
         let km = eta.distanceMeters / 1000
         return "ETA \(Int(eta.minutes.rounded())) min · \(String(format: "%.1f", km)) km\(transport)"
     }
 
-    private func resolveCoordinate(address: String?, latitude: Double?, longitude: Double?, mode: String) async throws -> (latitude: Double, longitude: Double) {
-        if let latitude, let longitude {
-            return (latitude, longitude)
+    private func resolveDestination(_ arguments: DirectionsETAArguments) throws -> RouteEndpoint {
+        if let address = arguments.to.nilIfEmpty {
+            return .address(address)
         }
-        if let address {
-            guard let first = try await lookup.geocode(address: address).first else {
-                throw ToolPlacesError.noResult("the \(mode) address '\(address)'")
-            }
-            return (first.latitude, first.longitude)
+        if let latitude = arguments.to_latitude, let longitude = arguments.to_longitude {
+            return .coordinates(latitude: latitude, longitude: longitude)
         }
-        throw ToolPlacesError.invalidArguments("directions_eta needs a \(mode): an address or latitude/longitude.")
+        throw ToolPlacesError.invalidArguments("directions_eta needs a destination: an address or latitude/longitude.")
     }
 
-    private func geocodeToReading(_ address: String) async throws -> LocationReading {
-        guard let first = try await lookup.geocode(address: address).first else {
-            throw ToolPlacesError.noResult("the origin address '\(address)'")
+    private func resolveOrigin(_ arguments: DirectionsETAArguments) throws -> RouteEndpoint {
+        if let address = arguments.from.nilIfEmpty {
+            return .address(address)
         }
-        return LocationReading(
-            latitude: first.latitude, longitude: first.longitude,
-            horizontalAccuracy: 0, timestamp: .distantPast
-        )
+        if let latitude = arguments.from_latitude, let longitude = arguments.from_longitude {
+            return .coordinates(latitude: latitude, longitude: longitude)
+        }
+        return .currentLocation
     }
 }

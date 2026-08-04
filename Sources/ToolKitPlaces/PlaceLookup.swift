@@ -68,6 +68,19 @@ public struct RouteETA: Sendable, Equatable {
     }
 }
 
+/// One end of a `directions_eta` request. The lookup handles geocoding
+/// `.address` itself (reusing MapKit's own `MKMapItem` rather than forcing the
+/// tool to pre-geocode to coordinates and then reconstruct a placemark from
+/// raw coordinates via the deprecated `MKPlacemark.init(coordinate:)`).
+/// `.coordinates` keeps the coordinate-only path for callers that already have
+/// the lat/lon; the lookup uses the deprecated `MKPlacemark(coordinate:)` there
+/// with a documented known-gap comment (review top-up D).
+public enum RouteEndpoint: Sendable, Equatable {
+    case currentLocation
+    case coordinates(latitude: Double, longitude: Double)
+    case address(String)
+}
+
 public protocol PlaceLookup: Sendable {
     /// The device's current location, one shot.
     func currentLocation() async throws -> LocationReading
@@ -77,6 +90,8 @@ public protocol PlaceLookup: Sendable {
     func reverseGeocode(latitude: Double, longitude: Double) async throws -> [Placemark]
     /// Local place search; coordinates narrow the region when given.
     func searchPlaces(query: String, latitude: Double?, longitude: Double?) async throws -> [Place]
-    /// Travel time from an origin (nil = current location) to a destination.
-    func directionsETA(from: LocationReading?, toLatitude: Double, toLongitude: Double) async throws -> RouteETA
+    /// Travel time from an origin endpoint to a destination endpoint. The
+    /// lookup handles geocoding addresses and the no-origin auth ladder; the
+    /// tool only decides which form the model supplied.
+    func directionsETA(from origin: RouteEndpoint, to destination: RouteEndpoint) async throws -> RouteETA
 }

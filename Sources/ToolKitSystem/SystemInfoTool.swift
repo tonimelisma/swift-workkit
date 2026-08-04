@@ -88,12 +88,43 @@ public struct SystemInfoArguments: Sendable {
 }
 
 enum NetworkStatus {
+    /// The production network reachability report, backed by `NWPathMonitor`.
+    /// Capped at 5 seconds — if the monitor doesn't emit a path within that
+    /// window (unusual hardware state, no queue started, or the AsyncSequence
+    /// bridge hangs), the tool returns `unknown` instead of wedging the agent
+    /// loop. The same `withThrowingTaskGroup` + racer pattern `currentLocation`
+    /// uses for its 15s fix window.
     static func current() async -> String {
-        let monitor = NWPathMonitor()
-        for await path in monitor {
-            return format(path)
+        await current(paths: NWPathMonitor(), timeout: .seconds(5))
+    }
+
+    /// Testable form: any `AsyncSequence<NWPath>` plus a configurable timeout.
+    /// Production passes a fresh `NWPathMonitor` and 5s; tests pass a fake
+    /// sequence that never emits and a tiny timeout to assert the fallback.
+    static func current<S: AsyncSequence & Sendable>(
+        paths: S, timeout: Duration = .seconds(5)
+    ) async -> String where S.Element == NWPath {
+        await withTaskGroup(of: String?.self) { group in
+            group.addTask {
+                do {
+                    for try await path in paths { return format(path) }
+                } catch {
+                    // The path sequence failed; let the sleeper decide the result.
+                    return nil
+                }
+                return nil
+            }
+            group.addTask {
+                try? await Task.sleep(for: timeout)
+                return nil
+            }
+            if let result = await group.next(), let result {
+                return result
+            }
+            // The sleeper fired (or the sequence ended without emitting) —
+            // the monitor task is implicitly cancelled on group exit.
+            return "unknown"
         }
-        return "unknown"
     }
 
     private static func format(_ path: NWPath) -> String {

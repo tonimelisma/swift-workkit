@@ -17,6 +17,11 @@ private struct FakePlaceLookup: PlaceLookup {
     var searchResults: [Place] = []
     var eta = RouteETA(minutes: 14, distanceMeters: 4200, transportType: "driving")
     var injectedError: ToolPlacesError?
+    /// Records the endpoints the tool passed in, so the suite can assert the
+    /// model-facing form is preserved (review top-up D: directionsETA now
+    /// takes RouteEndpoint rather than pre-geocoding addresses to coordinates).
+    var lastDestination: RouteEndpoint?
+    var lastOrigin: RouteEndpoint?
 
     func currentLocation() async throws -> LocationReading {
         if let injectedError { throw injectedError }
@@ -38,8 +43,34 @@ private struct FakePlaceLookup: PlaceLookup {
         return searchResults
     }
 
-    func directionsETA(from: LocationReading?, toLatitude: Double, toLongitude: Double) async throws -> RouteETA {
+    func directionsETA(from origin: RouteEndpoint, to destination: RouteEndpoint) async throws -> RouteETA {
         if let injectedError { throw injectedError }
+        // Faking a struct's value-typed stored properties requires a class
+        // wrapper or a reference-type holder; the test cases here only read
+        // the captured endpoints through closure-captured bindings, not
+        // through the lookup itself (see `endpointCaptureLookup`).
+        return eta
+    }
+}
+
+/// Reference-type test spy for `PlaceLookup` that records the endpoints into
+/// each `directionsETA` call, since the value-typed `FakePlaceLookup` can't.
+private final class EndpointCaptureLookup: PlaceLookup, @unchecked Sendable {
+    var destinations: [RouteEndpoint] = []
+    var origins: [RouteEndpoint] = []
+    var eta = RouteETA(minutes: 14, distanceMeters: 4200, transportType: "driving")
+    var injectedError: ToolPlacesError?
+
+    func currentLocation() async throws -> LocationReading {
+        LocationReading(latitude: 0, longitude: 0, horizontalAccuracy: 0, timestamp: .distantPast)
+    }
+    func geocode(address: String) async throws -> [Placemark] { [] }
+    func reverseGeocode(latitude: Double, longitude: Double) async throws -> [Placemark] { [] }
+    func searchPlaces(query: String, latitude: Double?, longitude: Double?) async throws -> [Place] { [] }
+    func directionsETA(from origin: RouteEndpoint, to destination: RouteEndpoint) async throws -> RouteETA {
+        if let injectedError { throw injectedError }
+        origins.append(origin)
+        destinations.append(destination)
         return eta
     }
 }
@@ -108,5 +139,46 @@ func directionsETARequiresDestination() async throws {
     let tool = DirectionsETATool(lookup: FakePlaceLookup())
     await #expect(throws: ToolPlacesError.invalidArguments("directions_eta needs a destination: an address or latitude/longitude.")) {
         _ = try await tool.call(arguments: .init())
+    }
+}
+
+// MARK: - 2026-08-03 review top-up D: RouteEndpoint preserves model-facing form
+
+@Test("FR-105: directions_eta passes .address endpoint through (review top-up D)")
+func directionsETAAddressEndpointPreserved() async throws {
+    let lookup = EndpointCaptureLookup()
+    let tool = DirectionsETATool(lookup: lookup)
+    _ = try await tool.call(arguments: .init(to: "Mission District", from: "SOMA"))
+    #expect(lookup.destinations == [.address("Mission District")])
+    #expect(lookup.origins == [.address("SOMA")])
+}
+
+@Test("FR-105: directions_eta passes .coordinates endpoint for raw lat/lon (review top-up D)")
+func directionsETACoordinatesEndpointPreserved() async throws {
+    let lookup = EndpointCaptureLookup()
+    let tool = DirectionsETATool(lookup: lookup)
+    _ = try await tool.call(arguments: .init(
+        to_latitude: 37.7749, to_longitude: -122.4194,
+        from_latitude: 37.5, from_longitude: -122.3
+    ))
+    #expect(lookup.destinations == [.coordinates(latitude: 37.7749, longitude: -122.4194)])
+    #expect(lookup.origins == [.coordinates(latitude: 37.5, longitude: -122.3)])
+}
+
+@Test("FR-105: directions_eta defaults omitted origin to .currentLocation (review top-up D)")
+func directionsETADefaultOriginIsCurrentLocation() async throws {
+    let lookup = EndpointCaptureLookup()
+    let tool = DirectionsETATool(lookup: lookup)
+    _ = try await tool.call(arguments: .init(to_latitude: 37.7749, to_longitude: -122.4194))
+    #expect(lookup.origins == [.currentLocation], "omitted origin → the lookup runs the TCC ladder inside directionsETA; the tool doesn't pre-flight it")
+}
+
+@Test("FR-105: directions_eta surfaces .serviceFailure from the lookup (review top-up D)")
+func directionsETASurfacesServiceFailure() async throws {
+    let lookup = EndpointCaptureLookup()
+    lookup.injectedError = .serviceFailure("routing failed")
+    let tool = DirectionsETATool(lookup: lookup)
+    await #expect(throws: ToolPlacesError.serviceFailure("routing failed")) {
+        _ = try await tool.call(arguments: .init(to_latitude: 37.7749, to_longitude: -122.4194))
     }
 }
