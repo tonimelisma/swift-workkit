@@ -46,23 +46,6 @@ need the effect/budget vocabulary, just a 7-line text helper, and
 "ToolVocabulary is the only shared language between Recorder and ToolKit"
 (ToolAnnotations.swift:1-5) shouldn't erode for a string trimmer.
 
-**b. ToolKitPIM: blockers + smells + the empty-clears contract.**
-Toni, 2026-08-03: "you figure it out!!! what is the correct behavior!" — the
-contract is **`nil` preserves, empty/whitespace clears**, matching the calendar
-tool's existing `location`/`notes` overlay and the file-tool edit ledger. The
-contact four-name overlay is the outlier and gets fixed. Four real bugs ride
-this: (1) `update_contact` silently destroys email/phone labels
-(`ContactsPIMStore.apply` hardcodes `CNLabelHome`/`CNLabelPhoneNumberMobile`,
-so touching any contact wipes "Work"/"Home (landline)" labels permanently); (2)
-the four-name overlay uses `nilIfEmpty ?? current` so `""` preserves instead of
-clearing, contradicting the @Guide text; (3) `MemoryContactStore.search`
-OR-short-circuits while real `ContactsPIMStore` ANDs — a fake that proves
-things the real store doesn't; (4) `update_calendar_event` re-resolves
-`eventCalendar` even when no calendar patch was supplied, silently moving events
-between duplicate-named calendars. Smells: the complete/uncomplete "journal
-guard" overclaim; the unverified "four-year EventKit cap" in tool prose;
-force-unwrap on `ListCalendarEventsTool:58`.
-
 **c. ToolKitPhotos: blockers + the path-helper divergence.**
 Three real bugs: (1) `export_photo` lets an agent write anywhere via
 `FileManager default` `root.appendingPathComponent(filename)` with an
