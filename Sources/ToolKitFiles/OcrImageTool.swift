@@ -52,15 +52,29 @@ public struct OcrImageTool: Tool, Sendable {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = arguments.accurate == false ? .fast : .accurate
         let handler = VNImageRequestHandler(url: url, options: [:])
-        do {
-            try handler.perform([request])
-        } catch {
-            throw FileToolError.invalidArguments("Couldn't recognize text in \(arguments.path).")
-        }
-
-        let text = (request.results ?? [])
-            .compactMap { $0.topCandidates(1).first?.string }
-            .joined(separator: "\n")
-        return text.isEmpty ? "[No text recognized]" : text
+        // `VNImageRequestHandler.perform(_:)` is synchronous — Vision's
+        // ~60s first-call model warmup runs on whichever executor serviced
+        // this Tool `call`, which could be the main actor or a high-priority
+        // cooperative-pool lane. Offloading onto a detached userInitiated
+        // task keeps the main actor free. Reading `request.results` happens
+        // inside the same task (no race crossing back) since the Vision
+        // types involved (`VNRecognizeTextRequest`, `VNRecognizeTextObservation`)
+        // aren't `Sendable` — only the produced `String` crosses the
+        // isolation boundary.
+        let text: String = try await Task.detached(priority: .userInitiated) { () -> String in
+            do {
+                try handler.perform([request])
+            } catch {
+                // Surface Vision failures to the caller; the inner `do/catch`
+                // preserves the "wrap as FileToolError.invalidArguments"
+                // shape from the pre-detached call.
+                throw FileToolError.invalidArguments("Couldn't recognize text in \(arguments.path).")
+            }
+            let recognized = (request.results ?? [])
+                .compactMap { $0.topCandidates(1).first?.string }
+                .joined(separator: "\n")
+            return recognized.isEmpty ? "[No text recognized]" : recognized
+        }.value
+        return text
     }
 }

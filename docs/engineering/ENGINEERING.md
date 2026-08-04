@@ -1,9 +1,10 @@
 # WorkKit — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-08-03 (review top-up D: ToolKitPlaces RouteEndpoint refactor for
-the directionsETA deprecation, structured `serviceFailure` on MapKit errors, TCC
-ladder on the no-origin ETA path, 5s `NWPathMonitor` timeout in `system_info`).
+change: 2026-08-03 (review top-up E: `schedule_notification` length / horizon
+caps + caller-supplied id; `system_info` disk row reads the system volume on
+both platforms; `ocr_image` offloads synchronous `Vision.perform` to a
+`Task.detached`).
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -109,16 +110,21 @@ ToolKitPIMTests/                          39 tests: calendar events, reminders,
                                            contract, AND search, label preservation,
                                            and the overlap-range event filter —
                                            against in-memory store doubles.
-  ToolKitFilesTests/                        35 tests: paging, docx, glob, read-before-write,
-                                             security-scoped-root no-op path (FR-101),
-                                             OCR of generated bitmaps (FR-106)
+ToolKitFilesTests/                        35 tests: paging, docx, glob, read-before-write,
+                                           security-scoped-root no-op path (FR-101),
+                                           OCR of generated bitmaps (FR-106, run
+                                           inside a `Task.detached` so the
+                                           cooperative pool isn't blocked by
+                                           Vision's synchronous warmup)
 ToolKitPlacesTests/                       11 tests: places contracts against a fake lookup,
                                            including the RouteEndpoint form preserved
                                            through directions_eta (address / coordinates /
                                            currentLocation) and serviceFailure surfacing
 ToolKitSystemTests/                       2 tests: system_info format with injected network,
                                            and the NetworkStatus 5s timeout fallback
-  ToolKitNotificationsTests/               4 tests: trigger construction + validation
+  ToolKitNotificationsTests/               10 tests: trigger construction + validation,
+                                           and the length / horizon / id /
+                                           trim hardening (review top-up E)
   ToolKitPhotosTests/                       6 tests: search/export contracts, export
                                            I/O, path-traversal rejection in
                                            filename (review top-up C), framework

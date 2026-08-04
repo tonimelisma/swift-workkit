@@ -41,7 +41,13 @@ public struct SystemInfoTool: Tool, Sendable {
     }
 
     private func diskStatus() -> (free: String, total: String) {
-        let url = URL(fileURLWithPath: NSHomeDirectory())
+        // Compute against the root volume of the system, not the app's home
+        // directory. On iOS `NSHomeDirectory()` is the app's sandbox container
+        // and the quota would report the container (often 2 GB) rather than
+        // the device (often 64 GB) — a model acting on "Disk: 2 GB free" would
+        // decline a 3 GB file the device would in fact fit. `URL(fileURLWithPath: "/")`
+        // reports the system volume on both platforms (review top-up E).
+        let url = URL(fileURLWithPath: "/")
         let values = try? url.resourceValues(forKeys: [
             .volumeAvailableCapacityForImportantUsageKey,
             .volumeTotalCapacityKey,
