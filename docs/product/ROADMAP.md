@@ -46,18 +46,6 @@ need the effect/budget vocabulary, just a 7-line text helper, and
 "ToolVocabulary is the only shared language between Recorder and ToolKit"
 (ToolAnnotations.swift:1-5) shouldn't erode for a string trimmer.
 
-**d. ToolKitPlaces: smells +MKPlacemark deprecation.**
-(1) Force-unwrap of `MKMapItem.location` crashes on POIs and directions-only
-items; (2) `ToolPlacesError.serviceFailure` is dead code, real `MKDirections`
-failures leak raw; (3) `directionsETA` no-origin path uses
-`MKMapItem.forCurrentLocation()` without the TCC ladder that `currentLocation`
-runs; (4) `NetworkStatus.current()` has no timeout — `system_info` can wedge
-the agent loop; (5) `MKPlacemark.init(coordinate:)` and `init(placemark:)`
-deprecation warnings in the build output at MapKitPlaceLookup.swift:111 and
-:115 — pre-empt the next SDK seed by routing through `MKGeocodingRequest`'s
-`mapItems` and `MKMapItem.forCurrentLocation()`; (6) redundant `Sendable` on
-the lookup declaration; (7) weather/ETA description strings don't name units.
-
 **e. Notifications + System + OcrImage: hardening smells.**
 (1) `schedule_notification` has no length cap on `title`/`body`, no horizon cap
 on `seconds`/`date`, fresh `UUID` per call — the model can fill Apple's
