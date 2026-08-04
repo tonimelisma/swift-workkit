@@ -48,7 +48,11 @@ final class MemoryCalendarStore: CalendarEventStore, @unchecked Sendable {
     func events(from start: Date, to end: Date, calendarTitles: [String]?) async throws -> [PIMEvent] {
         if let injectedError { throw injectedError }
         return eventsByID.values
-            .filter { $0.startDate >= start && $0.startDate < end }
+            // Mirror EventKit `predicateForEvents(withStart:end:calendars:)`:
+            // an event whose own range overlaps the query range is returned —
+            // not only events whose `startDate` falls inside it. A multi-day
+            // event starting yesterday shows up under today's query.
+            .filter { event in event.startDate < end && event.endDate > start }
             .filter { event in
                 calendarTitles?.contains { $0.caseInsensitiveCompare(event.calendarTitle) == .orderedSame } ?? true
             }
@@ -189,18 +193,25 @@ final class MemoryContactStore: ContactStore, @unchecked Sendable {
 
     func search(name: String?, email: String?, phone: String?) async throws -> [PIMContact] {
         if let injectedError { throw injectedError }
+        // AND the criteria, mirroring the real ContactsPIMStore's
+        // NSCompoundPredicate(andPredicateWithSubpredicates:) — the fake the
+        // contract tests run against must prove what the real store does, not
+        // something easier. (The tool-level guard rejects all-nil calls
+        // before they reach the store, so the "no criteria" branch is
+        // unreachable in practice; we return empty rather than throw to
+        // avoid pretending the contract says otherwise.)
         return contactsByID.values
             .filter { contact in
                 if let name {
-                    return contact.name.localizedCaseInsensitiveContains(name)
+                    guard contact.name.localizedCaseInsensitiveContains(name) else { return false }
                 }
                 if let email {
-                    return contact.emails.contains { $0.caseInsensitiveCompare(email) == .orderedSame }
+                    guard contact.emails.contains(where: { $0.caseInsensitiveCompare(email) == .orderedSame }) else { return false }
                 }
                 if let phone {
-                    return contact.phones.contains { $0 == phone }
+                    guard contact.phones.contains(where: { $0 == phone }) else { return false }
                 }
-                return false
+                return true
             }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }

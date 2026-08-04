@@ -2,9 +2,11 @@ import Foundation
 import FoundationModels
 import ToolSupport
 
-// REQ: FR-093 — complete_reminder: idempotent by design (completing an already
-// completed reminder is a no-op the tool reports as such), so the journal-
-// before-execute guard never double-completes something already done.
+// REQ: FR-093 — complete_reminder: idempotent by design. The explicit
+// final-state check below (guard !current.isCompleted) skips the setCompleted
+// write when the reminder is already done, so a redundant call reports "was
+// already completed" rather than re-issuing a write — the source of the
+// idempotency is this check, not the Recorder's journal-before-execute guard.
 
 @Generable
 public struct CompleteReminderArguments: Sendable {

@@ -7,11 +7,11 @@ where he decided. IDs are never reused or renumbered; dropped IDs are deleted.
 **Next free: FR-112 · NFR-013.**
 
 WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) with
-products `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, and the
-ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`, `ToolKitPIM`,
-`ToolKitPlaces`, `ToolKitSystem`, `ToolKitNotifications`, `ToolKitPhotos`,
-`ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 193 package tests
-(180 run unconditionally, plus 12
+products `Recorder`, `Executors`, `ToolVocabulary`, `ToolSupport`, `RuntimeTesting`,
+and the ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`,
+`ToolKitPIM`, `ToolKitPlaces`, `ToolKitSystem`, `ToolKitNotifications`,
+`ToolKitPhotos`, `ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 199
+package tests (186 run unconditionally, plus 12
 `.env`-key-gated live provider/search smokes that self-skip without keys and 1
 device-gated on-device Apple model test that runs where hardware allows), green on
 both platforms. MIT. This repo is
@@ -192,14 +192,16 @@ exist on macOS 27 and iOS 27 (verified against both SDKs).
   reminder lists, with the titles and stable ids the write tools target, plus
   read-only flags. The model-facing handle source for every calendar tool.
 - **FR-087 — Implemented.** `list_calendar_events`: events in a date range
-  (default today), sorted, count-capped, with stable ids. EventKit caps any range
-  at four years — documented in the tool. *Why default today:* the killer ask is
-  literally "What's on my calendar".
+  (default today), sorted, count-capped, with stable ids. *Why default today:* the
+  killer ask is literally "What's on my calendar".
 - **FR-088/089/090 — Implemented.** `create_calendar_event`, `update_calendar_event`,
   `delete_calendar_event`: full calendar CRUD. Update/delete take the id printed
   by the list tool — the file tools' read-before-write contract applied to the
   calendar. Update reads the current event first and overlays only what changed;
-  an empty location/notes clears.
+  an empty `title`, `location`, or `notes` clears it (2026-08-03 review top-up
+  B). Passing `calendar:` re-resolves by title (first match if duplicated); not
+  passing it preserves `event.calendar` by id — fixing a silent move between
+  duplicate-named calendars.
 - **FR-091 — Implemented.** `list_reminders`: incomplete (default)/completed/all,
   due-range filterable, sorted by due date (undated last), with stable ids.
 - **FR-092/093/094/095 — Implemented.** `add_reminder`, `complete_reminder`,
@@ -207,9 +209,19 @@ exist on macOS 27 and iOS 27 (verified against both SDKs).
   the Recorder's journal-before-execute guard can never double-complete a reminder
   that's already done.
 - **FR-096 — Implemented.** `search_contacts`: by name, email, or phone (ANDed
-  when combined), with stable ids.
+  when combined), with stable ids. The fake mirrors AND (2026-08-03 review
+  top-up B): a previously OR-short-circuiting double was hiding that the real
+  store ANDs, and the contract tests now prove that.
 - **FR-097/098/099 — Implemented.** `create_contact`, `update_contact`,
   `delete_contact`. A contact needs a name or an organization.
+  `update_contact`'s overlay contract (2026-08-03 review top-up B): **`nil`
+  preserves the current value; empty / whitespace clears it** — Toni delegated
+  the call ("you figure it out!!! what is the correct behavior!") and this is
+  the determinate decision (matches the calendar tool's `location`/`notes`
+  overlay and the file-tool edit ledger). Preserves email/phone labels: a
+  patch that includes a value equal to an existing entry keeps that entry's
+  label (`CNLabelWork` etc.); new values default to `CNLabelHome` /
+  `CNLabelPhoneNumberMobile` as before.
 - **TCC obligations, per framework — documented in each tool's description and
   enforced by the error itself.** Calendar: `NSCalendarsFullAccessUsageDescription`;
   Reminders: `NSRemindersFullAccessUsageDescription`; Contacts:

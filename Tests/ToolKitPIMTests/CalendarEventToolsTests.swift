@@ -173,3 +173,81 @@ func calendarReadAccessDenialPropagates() async throws {
         _ = try await tool.call(arguments: .init(start: "2026-08-02", end: "2026-08-03"))
     }
 }
+
+// MARK: - 2026-08-03 review top-up B: empty-clears + calendar overlay + overlap
+
+@Test("FR-089: update_calendar_event title empty clears; nil preserves (review top-up B)")
+func updateEventTitleEmptyClearsVsNilPreserves() async throws {
+    // Each subtest gets a fresh store — the MemoryCalendarStore's updateEvent
+    // overwrites eventsByID[id], so subsequent reads would see mutated state.
+    func store() -> MemoryCalendarStore {
+        let morning = try! PIMDate.parse("2026-08-02T09:00:00Z", calendar: fixedCalendar, timeZone: fixedTimeZone)
+        return MemoryCalendarStore(events: [
+            PIMEvent(id: "e1", title: "Old title", startDate: morning, endDate: morning.addingTimeInterval(3600),
+                     isAllDay: false, location: "Old room", notes: "Original notes", calendarTitle: "Work"),
+        ])
+    }
+
+    let s1 = store()
+    let tool = UpdateCalendarEventTool(store: s1, calendar: fixedCalendar, timeZone: fixedTimeZone)
+    _ = try await tool.call(arguments: .init(id: "e1", title: ""))
+    #expect(s1.lastUpdateDraft?.title == "")
+    #expect(s1.lastUpdateDraft?.location == "Old room")
+    #expect(s1.lastUpdateDraft?.notes == "Original notes")
+    #expect(s1.lastUpdateDraft?.calendarTitle == nil, "no calendar field requested → pass-through nil, store preserves by id")
+
+    let s2 = store()
+    let tool2 = UpdateCalendarEventTool(store: s2, calendar: fixedCalendar, timeZone: fixedTimeZone)
+    _ = try await tool2.call(arguments: .init(id: "e1", notes: "x"))
+    #expect(s2.lastUpdateDraft?.notes == "x")
+    #expect(s2.lastUpdateDraft?.title == "Old title")
+    #expect(s2.lastUpdateDraft?.calendarTitle == nil)
+
+    let s3 = store()
+    let tool3 = UpdateCalendarEventTool(store: s3, calendar: fixedCalendar, timeZone: fixedTimeZone)
+    _ = try await tool3.call(arguments: .init(id: "e1", location: ""))
+    #expect(s3.lastUpdateDraft?.location == "", "empty location clears via the ?? semantics of Optional(String)")
+}
+
+@Test("FR-089: update_calendar_event keeps the calendar when none is requested (review top-up B)")
+func updateEventKeepsCalendarWhenNoneRequested() async throws {
+    let morning = try PIMDate.parse("2026-08-02T09:00:00Z", calendar: fixedCalendar, timeZone: fixedTimeZone)
+    let store = MemoryCalendarStore(events: [
+        PIMEvent(id: "e1", title: "Standup", startDate: morning, endDate: morning.addingTimeInterval(3600),
+                 isAllDay: false, location: nil, notes: nil, calendarTitle: "Work-cal-1"),
+    ])
+    let tool = UpdateCalendarEventTool(store: store, calendar: fixedCalendar, timeZone: fixedTimeZone)
+
+    _ = try await tool.call(arguments: .init(id: "e1", notes: "revised"))
+    #expect(store.lastUpdateDraft?.calendarTitle == nil)
+    // The fake overlays `draft.calendarTitle ?? current.calendarTitle`, so the
+    // persisted event keeps the existing calendar — the regression guard is
+    // that no patch ⇒ no re-resolve. The real EventKitStore already enforces
+    // that (only re-resolves on `if let calendarTitle = draft.calendarTitle`).
+    let updated = try await store.event(id: "e1")
+    #expect(updated?.calendarTitle == "Work-cal-1")
+}
+
+@Test("FR-087: list_calendar_events returns events that overlap the range, not only start-in-range (review top-up B)")
+func listEventsOverlapRange() async throws {
+    let yesterday = try PIMDate.parse("2026-08-01T09:00:00Z", calendar: fixedCalendar, timeZone: fixedTimeZone)
+    let tomorrow = try PIMDate.parse("2026-08-03T09:00:00Z", calendar: fixedCalendar, timeZone: fixedTimeZone)
+    let today = try PIMDate.parse("2026-08-02T09:00:00Z", calendar: fixedCalendar, timeZone: fixedTimeZone)
+    let store = MemoryCalendarStore(events: [
+        // Multi-day event starting yesterday, ending tomorrow — must show under today's query.
+        PIMEvent(id: "multi", title: "Multi-day", startDate: yesterday, endDate: tomorrow,
+                 isAllDay: false, location: nil, notes: nil, calendarTitle: "Work"),
+        // Event starting later today, ending later today — also overlap regardless.
+        PIMEvent(id: "e1", title: "Standup", startDate: today, endDate: today.addingTimeInterval(3600),
+                 isAllDay: false, location: nil, notes: nil, calendarTitle: "Work"),
+        // Event entirely before the query starts (yesterday morning) — NOT overlapping.
+        PIMEvent(id: "done", title: "Done-before", startDate: yesterday.addingTimeInterval(-3_600),
+                 endDate: yesterday.addingTimeInterval(3_600), isAllDay: false, location: nil, notes: nil,
+                 calendarTitle: "Work"),
+    ])
+    let tool = ListCalendarEventsTool(store: store, calendar: fixedCalendar, timeZone: fixedTimeZone, locale: fixedLocale)
+    let output = try await tool.call(arguments: .init(start: "2026-08-02", end: "2026-08-03"))
+    #expect(output.contains("Multi-day"))
+    #expect(output.contains("Standup"))
+    #expect(!output.contains("Done-before"))
+}

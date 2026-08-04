@@ -102,14 +102,60 @@ public final class ContactsPIMStore: ContactStore, @unchecked Sendable {
 
     // MARK: - Mapping
 
-    private func apply(_ draft: PIMContactDraft, to contact: CNMutableContact) {
+    /// Label-preserving apply: write `draft` onto `contact` while keeping
+    /// existing email/phone labels on values the patch includes. `internal`
+    /// so the suite can call it directly without an EventKit save round-trip
+    /// (label state lives on `CNMutableContact`, not on `PIMContact` — there
+    /// is no other offline evidence path).
+    internal func apply(_ draft: PIMContactDraft, to contact: CNMutableContact) {
         contact.givenName = draft.givenName
         contact.familyName = draft.familyName
         contact.organizationName = draft.organization ?? ""
         contact.jobTitle = draft.jobTitle ?? ""
-        contact.emailAddresses = draft.emails.map { CNLabeledValue(label: CNLabelHome, value: $0 as NSString) }
-        contact.phoneNumbers = draft.phones.map {
-            CNLabeledValue(label: CNLabelPhoneNumberMobile, value: CNPhoneNumber(stringValue: $0))
+        contact.emailAddresses = Self.resolvedEmailLabels(existing: contact.emailAddresses, draft: draft.emails)
+        contact.phoneNumbers = Self.resolvedPhoneLabels(existing: contact.phoneNumbers, draft: draft.phones)
+    }
+
+    /// Label-preserving apply for emails: a draft value equal (case-insensitive)
+    /// to an existing entry keeps that entry's label; new values default to
+    /// `CNLabelHome`. Empty / whitespace-only strings in the draft array are
+    /// dropped — a model that passes `["ada@acme.com", ""]` shouldn't create a
+    /// labeled empty-string entry.
+    static func resolvedEmailLabels(
+        existing: [CNLabeledValue<NSString>],
+        draft: [String]
+    ) -> [CNLabeledValue<NSString>] {
+        let filtered = draft.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return filtered.map { value in
+            let existingLabel = existing.first { entry in
+                String(entry.value).caseInsensitiveCompare(value) == .orderedSame
+            }?.label
+            return CNLabeledValue(
+                label: existingLabel ?? CNLabelHome,
+                value: value as NSString
+            )
+        }
+    }
+
+    /// Label-preserving apply for phones: a draft value equal (string equality
+    /// on `stringValue`) to an existing entry keeps that entry's label; new
+    /// values default to `CNLabelPhoneNumberMobile`. Empty / whitespace-only
+    /// strings in the draft array are dropped.
+    static func resolvedPhoneLabels(
+        existing: [CNLabeledValue<CNPhoneNumber>],
+        draft: [String]
+    ) -> [CNLabeledValue<CNPhoneNumber>] {
+        let filtered = draft.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return filtered.map { value in
+            let existingLabel = existing.first { entry in
+                entry.value.stringValue == value
+            }?.label
+            return CNLabeledValue(
+                label: existingLabel ?? CNLabelPhoneNumberMobile,
+                value: CNPhoneNumber(stringValue: value)
+            )
         }
     }
 

@@ -37,8 +37,12 @@ manual `Calendar.dateComponents` fallback (the style won't parse date-only).
 
 ## EventKit quirks that shaped the tools
 
-- `predicateForEvents(withStart:end:calendars:)` **caps any range at four years** —
-  a wider range is silently shortened. `list_calendar_events` documents it.
+- `predicateForEvents(withStart:end:calendars:)` historically caps any range
+  at four years — a wider range is silently shortened. **Verification gap
+  (2026-08-03 review):** the OS 27 SDK header carries no `fourYears` constant
+  andno Apple documentation reference has been found for the cap; the behavior
+  was observed in earlier iOS releases and is not re-verified here. The tool
+  description dropped the claim until a citation exists.
 - `fetchRemindersMatchingPredicate:completion:` returns a cancellation token, so
   **the ObjC completion-to-async import is disabled** (methods that return a value
   aren't converted); it must be wrapped in `withCheckedContinuation` by hand.

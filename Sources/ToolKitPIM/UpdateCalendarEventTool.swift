@@ -23,7 +23,7 @@ public struct UpdateCalendarEventArguments: Sendable {
     public var location: String?
     @Guide(description: "New notes; empty string clears them")
     public var notes: String?
-    @Guide(description: "Move to this calendar title (from list_calendars)")
+    @Guide(description: "Move to this calendar title (from list_calendars); first match is used if duplicated")
     public var calendar: String?
 
     public init(
@@ -90,14 +90,25 @@ public struct UpdateCalendarEventTool: Tool, Sendable {
         guard end > start else {
             throw PIMToolError.invalidArguments("end must be after start.")
         }
+        // Empty-clears contract (Toni 2026-08-03 delegated; matches the file-tool
+        // edit ledger): nil preserves; empty / whitespace clears. `location` and
+        // `notes` get it for free via `??` semantics — `Optional("")` unwraps to
+        // `""`, not to `current.location`; only `title` needs the explicit .map.
+        let title = arguments.title.map { $0.nilIfEmpty ?? "" } ?? current.title
+        // Calendar overlay: only pass a calendar title through when the model
+        // asked for one. The store re-resolves only when `draft.calendarTitle !=
+        // nil`; with `nil`, it preserves `event.calendar` by id, so an event on
+        // one of two "Work" calendars stays on its own — not whichever the
+        // case-insensitive `.first` lookup happens to return early.
+        let calendarTitle = arguments.calendar.flatMap { $0.nilIfEmpty }
         let event = try await store.updateEvent(id: arguments.id, PIMEventDraft(
-            title: arguments.title.nilIfEmpty ?? current.title,
+            title: title,
             startDate: start,
             endDate: end,
             isAllDay: arguments.all_day ?? current.isAllDay,
             location: arguments.location ?? current.location,
             notes: arguments.notes ?? current.notes,
-            calendarTitle: arguments.calendar.nilIfEmpty ?? current.calendarTitle
+            calendarTitle: calendarTitle
         ))
         return "Updated \"\(event.title)\" [id: \(event.id ?? arguments.id)]"
     }
