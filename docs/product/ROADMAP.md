@@ -46,19 +46,6 @@ need the effect/budget vocabulary, just a 7-line text helper, and
 "ToolVocabulary is the only shared language between Recorder and ToolKit"
 (ToolAnnotations.swift:1-5) shouldn't erode for a string trimmer.
 
-**c. ToolKitPhotos: blockers + the path-helper divergence.**
-Three real bugs: (1) `export_photo` lets an agent write anywhere via
-`FileManager default` `root.appendingPathComponent(filename)` with an
-unsanitized agent-controlled `filename` — `../evil.png` escapes the root; (2)
-`SystemPhotoLibrary.search` enumerates `.concurrent` while appending to a
-Swift `Array<PHAsset>`, a data race under Strict Concurrency; (3)
-`SystemPhotoLibrary.assetData` resumes the continuation with the buffer in both
-success and failure branches — real errors get swallowed, files get partial
-bytes. Plus the duplicated `FileToolPathPhotos.relative` drops
-`resolvingSymlinksInPath()` and leaks `/var` vs `/private/var` on iOS — fix by
-making `ToolKitPhotos` depend on `ToolKitFiles` and using the canonical
-`FileToolPath` helper. Redundant `@unchecked Sendable` on a stateless struct.
-
 **d. ToolKitPlaces: smells +MKPlacemark deprecation.**
 (1) Force-unwrap of `MKMapItem.location` crashes on POIs and directions-only
 items; (2) `ToolPlacesError.serviceFailure` is dead code, real `MKDirections`
