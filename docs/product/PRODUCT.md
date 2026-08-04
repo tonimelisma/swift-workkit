@@ -10,8 +10,8 @@ WorkKit today: a local Swift package on Foundation Models (macOS 27 + iOS 27) wi
 products `Recorder`, `Executors`, `ToolVocabulary`, `ToolSupport`, `RuntimeTesting`,
 and the ToolKit family (`ToolKitFiles`, `ToolKitWeb`, `ToolKitInteraction`,
 `ToolKitPIM`, `ToolKitPlaces`, `ToolKitSystem`, `ToolKitNotifications`,
-`ToolKitPhotos`, `ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 199
-package tests (186 run unconditionally, plus 12
+`ToolKitPhotos`, `ToolKitWeather`, umbrellas `ToolKitForMac`/`ToolKitForiOS`). 201
+package tests (188 run unconditionally, plus 12
 `.env`-key-gated live provider/search smokes that self-skip without keys and 1
 device-gated on-device Apple model test that runs where hardware allows), green on
 both platforms. MIT. This repo is
@@ -305,9 +305,15 @@ ToolKitFiles because it is a file tool.
   photo-library discovery by type/date/album, with stable ids. TCC:
   `NSPhotoLibraryUsageDescription` (`.limited` grants accepted).
 - **FR-110 — Implemented.** `export_photo` (ToolKitPhotos): copies one photo's
-  original bytes into the host's workspace root. *Why a copy, not a write:* the
-  photo library is read-only here — delete/move/album were explicitly out of
-  scope in the research.
+  original bytes into the host's workspace root. The `filename` argument is a
+  leaf, not a path — `/` and `\` separators and `..` directory references are
+  rejected with the offending filename named (2026-08-03 review top-up C); the
+  agent cannot write anywhere outside its workspace. *Why a copy, not a write:*
+  the photo library is read-only here — delete/move/album were explicitly out
+  of scope in the research. Framework fetch errors (iCloud-not-downloaded,
+  network, cancellation) surface as `ToolPhotosError.exportFailed` with the
+  framework's own message rather than silently writing partial bytes; the
+  pre-2026-08-03 shape resumed the continuation regardless.
 - **FR-111 — Implemented.** `get_weather` (ToolKitWeather, WeatherKit): current
   conditions + a short forecast for explicit coordinates. *The honest cost the
   research flagged:* it needs the `com.apple.developer.weatherkit` entitlement —

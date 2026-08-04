@@ -11,6 +11,16 @@ private final class FakePhotoLibrary: PhotoLibrary, @unchecked Sendable {
     var exportData: (Data, String) = (Data([0x01, 0x02]), "png")
     var denyAccess = false
     var exportNotFound = false
+    /// When set, `assetData(id:)` throws this — simulating a real
+    /// `PHAssetResourceManager` failure (iCloud-only asset not downloaded,
+    /// network error, cancellation). Pre-2026-08-03 the real impl swallowed
+    /// such failures and resumed with a partial buffer; the throwing
+    /// continuation now surfaces them, and the fake mirrors that.
+    var exportError: ToolPhotosError?
+    /// Records the ids requested via `assetData` so `exportWritesCopy` and
+    /// friends prove the tool forwards the id — a silent regression catcher
+    /// if `export_photo` stops forwarding.
+    var requestedIDs: [String] = []
 
     func requestAccess() async throws {
         if denyAccess { throw ToolPhotosError.accessDenied }
@@ -21,7 +31,9 @@ private final class FakePhotoLibrary: PhotoLibrary, @unchecked Sendable {
     }
 
     func assetData(id: String) async throws -> (data: Data, fileExtension: String) {
+        requestedIDs.append(id)
         if exportNotFound { throw ToolPhotosError.notFound(id: id) }
+        if let exportError { throw exportError }
         return exportData
     }
 }
@@ -65,6 +77,7 @@ func exportWritesCopy() async throws {
     let tool = ExportPhotoTool(library: library, root: root)
     let output = try await tool.call(arguments: .init(id: "p1"))
     #expect(output == "Exported p1.png (11 bytes)")
+    #expect(library.requestedIDs == ["p1"], "the tool must forward the requested id — silently breaking this would let export_photo copy any asset regardless of the model's choice")
     let written = try Data(contentsOf: root.appendingPathComponent("p1.png"))
     #expect(written == Data("photo-bytes".utf8))
 }
@@ -85,4 +98,67 @@ func exportValidates() async throws {
         _ = try await tool.call(arguments: .init(id: "gone"))
     }
     _ = output
+}
+
+// MARK: - 2026-08-03 review top-up C: path sanitization + framework error surface
+
+@Test("FR-110: export_photo rejects path traversal in filename (review top-up C)")
+func exportRejectsPathTraversal() async throws {
+    let root = tempDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let library = FakePhotoLibrary()
+    let tool = ExportPhotoTool(library: library, root: root)
+
+    // Parent-directory traversal — would have escaped under the old join.
+    await #expect(throws: ToolPhotosError.invalidArguments(
+        "filename '../escape.png' must be a leaf — no path separators. The file lands inside the workspace root."
+    )) {
+        _ = try await tool.call(arguments: .init(id: "p1", filename: "../escape.png"))
+    }
+
+    // Absolute path.
+    await #expect(throws: ToolPhotosError.invalidArguments(
+        "filename '/etc/passwd' must be a leaf — no path separators. The file lands inside the workspace root."
+    )) {
+        _ = try await tool.call(arguments: .init(id: "p1", filename: "/etc/passwd"))
+    }
+
+    // Subdir slash — even a "legitimate" subdir is not allowed; only a leaf.
+    await #expect(throws: ToolPhotosError.invalidArguments(
+        "filename 'subdir/legit.png' must be a leaf — no path separators. The file lands inside the workspace root."
+    )) {
+        _ = try await tool.call(arguments: .init(id: "p1", filename: "subdir/legit.png"))
+    }
+
+    // Bare ".." — directory reference, not a leaf.
+    await #expect(throws: ToolPhotosError.invalidArguments(
+        "filename '..' must be a leaf and not a directory reference."
+    )) {
+        _ = try await tool.call(arguments: .init(id: "p1", filename: ".."))
+    }
+
+    // Backslash separator (Windows-style) — also rejected.
+    await #expect(throws: ToolPhotosError.invalidArguments(
+        "filename 'sub\\legit.png' must be a leaf — no path separators. The file lands inside the workspace root."
+    )) {
+        _ = try await tool.call(arguments: .init(id: "p1", filename: "sub\\legit.png"))
+    }
+
+    // Sanity: a plain leaf name still works.
+    let output = try await tool.call(arguments: .init(id: "p1", filename: "legit.png"))
+    #expect(output == "Exported legit.png (2 bytes)")
+}
+
+@Test("FR-110: export_photo surfaces a framework error instead of swallowing it (review top-up C)")
+func exportSurfacesFrameworkError() async throws {
+    let root = tempDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let library = FakePhotoLibrary()
+    library.exportError = ToolPhotosError.exportFailed("network down")
+    let tool = ExportPhotoTool(library: library, root: root)
+    await #expect(throws: ToolPhotosError.exportFailed("network down")) {
+        _ = try await tool.call(arguments: .init(id: "p1"))
+    }
+    // No file should have been written; the fetch failed before the write.
+    #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
 }

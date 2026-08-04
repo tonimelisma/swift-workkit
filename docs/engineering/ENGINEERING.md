@@ -1,7 +1,10 @@
 # WorkKit — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-08-03 (review top-up B: PIM empty-clears contract, label preservation, AND search, calendar-move-by-id, overlap filter).
+change: 2026-08-03 (review top-up C: ToolKitPhotos path sanitization for
+`export_photo`, dropping `.concurrent` from `SystemPhotoLibrary.search`,
+throwing-continuation for `assetData`, `FileToolPathPhotos` dedup via the
+`ToolKitFiles` dep).
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -113,7 +116,10 @@ ToolKitPIMTests/                          39 tests: calendar events, reminders,
   ToolKitPlacesTests/                       7 tests: places contracts against a fake lookup
   ToolKitSystemTests/                       1 test: system_info format with injected network
   ToolKitNotificationsTests/               4 tests: trigger construction + validation
-  ToolKitPhotosTests/                       4 tests: search/export contracts + export I/O
+  ToolKitPhotosTests/                       6 tests: search/export contracts, export
+                                           I/O, path-traversal rejection in
+                                           filename (review top-up C), framework
+                                           error surface from assetData
   ToolKitWeatherTests/                      3 tests: weather format + coordinate validation
   ExecutorsLiveTests/                       12 tests: real providers + Apple on-device,
                                              through this package's own executors —
@@ -472,6 +478,21 @@ decisions are worth recording:
   the tool refuses to hide: a service failure throws `unavailable`, which names
   `com.apple.developer.weatherkit` — the tool cannot request an entitlement, only
   the host can carry it.
+- **`export_photo` sanitizes the agent-controlled filename.** A model-proposed
+  `filename` is a leaf, not a path: `/` and `\` separators and `..` directory
+  references are rejected with the offending filename named — the agent's reach
+  is the workspace root and nowhere else. The previous shape
+  (`root.appendingPathComponent(filename)` with no sanitization) let a
+  `"../escape.png"` proposal write anywhere the FS resolved to. The fix also
+  resolves symlinks on `root` so the shared `FileToolPath.relative` helper (now
+  depended on via `ToolKitFiles`, dropping the divergent `FileToolPathPhotos`
+  that didn't resolve symlinks and leaked `/var` vs `/private/var` on iOS) gets
+  the canonical prefix on both platforms. The `assetData` continuation was
+  switched from `withCheckedContinuation` to `withCheckedThrowingContinuation`
+  in the same increment: a real `PHAssetResourceManager` failure (iCloud-only
+  asset not downloaded, network error, cancellation) now surfaces as
+  `ToolPhotosError.exportFailed` with the framework's own message rather than
+  silently resuming with a partial buffer that the host would write.
 
 ### Three executors, not eleven
 
