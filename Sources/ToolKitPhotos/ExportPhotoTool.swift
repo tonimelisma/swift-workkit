@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-110 — export_photo: copy one photo's original bytes into the host's
 // writable root (the model's file workspace) and return the relative path. The

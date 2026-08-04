@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-088 — create_calendar_event: the write half of the killer ask. The
 // description states the consequence plainly; approval policy is host-supplied

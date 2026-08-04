@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-105 — directions_eta: travel time and distance to a destination.
 // Addresses resolve through geocoding first; a missing origin means the device's

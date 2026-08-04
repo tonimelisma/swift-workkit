@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-093 — complete_reminder: idempotent by design (completing an already
 // completed reminder is a no-op the tool reports as such), so the journal-

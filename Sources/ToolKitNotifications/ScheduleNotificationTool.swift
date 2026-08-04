@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-108 — schedule_notification: the agent's real output channel. A local
 // notification needs no server, no push certificate, no Info.plist key — only
@@ -83,20 +84,5 @@ public struct ScheduleNotificationTool: Tool, Sendable {
         throw ToolNotificationsError.invalidArguments(
             "Couldn't parse '\(raw)' as a date. Use ISO 8601 (2026-08-02T15:00:00Z)."
         )
-    }
-}
-
-extension Optional where Wrapped == String {
-    var nilIfEmpty: String? {
-        guard let value = self else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-}
-
-extension String {
-    var nilIfEmpty: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 }

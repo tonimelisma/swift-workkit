@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-094 — uncomplete_reminder: the re-open that keeps a check-off honest —
 // a completed-in-error reminder comes back, and the report says exactly that.

@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-104 — search_places: Apple Maps local search ("coffee near me").
 // No location permission is required — a region is only a hint.

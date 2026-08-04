@@ -39,6 +39,13 @@ drifting implementation.
 Package.swift                              name "WorkKit"
 Sources/
   ToolVocabulary/                          ToolAnnotations, effect/budget value types
+  ToolSupport/                             shared text helpers used by ToolKit domain
+                                           modules (nilIfEmpty today); no FoundationModels
+                                           dep, no product — internal target imported by
+                                           name. Hoisted out of PIM/Places/Notifications/
+                                           Photos (2026-08-03 review top-up A) so the
+                                           four modules stop duplicating a 7-line trimmer
+                                           and don't need a ToolVocabulary dep just for it.
   Recorder/
     Identifiers.swift                      RunID / AttemptID / ToolInvocationID
     RunEvent.swift                         the append-only journal's event vocabulary
@@ -116,7 +123,7 @@ docs/                                       specs
 |---|---|---|
 | Language | Swift 6, strict concurrency | Platform-neutral package, not an app |
 | Tests | swift-testing | Why below |
-| Structure | One SPM package, repo root (`WorkKit`, `Recorder`, `Executors`, `ToolVocabulary`, `RuntimeTesting`, the ToolKit family) | Why below |
+| Structure | One SPM package, repo root (`WorkKit`, `Recorder`, `Executors`, `ToolVocabulary`, `ToolSupport`, `RuntimeTesting`, the ToolKit family) | Why below |
 | Provider chat/inference | `Executors` — a host builds a `LanguageModelSession` from them directly | Why below |
 | Durable-run substrate | `Recorder`: journal + checkpoints + archive replay, attach-only, no owned loop | Why below |
 | Min macOS | **27.0** | NFR-009, Why below |
@@ -531,6 +538,21 @@ depend only on FoundationModels + ToolVocabulary, never Recorder, so tools work
 with any model package and no runtime. A repo/package split happens when release
 cadences demonstrably diverge or an external consumer needs a piece standalone —
 an event, not a prediction.
+
+### `ToolSupport`: text helpers below the vocabulary layer
+
+`nilIfEmpty` (a `String?`/`String` whitespace-trim-to-nil) was duplicated identically
+across four ToolKit domain modules (PIM, Places, Notifications, Photos). The cleanest
+home would have been `ToolVocabulary`, but `ToolVocabulary`'s role is the only shared
+language between Recorder and ToolKit — effect/budget metadata — and dragging a
+string trimmer into that target would erode the line. `ToolSupport` is the
+tradeoff: a new internal SPM target with no `FoundationModels` dep and no shipped
+product, imported by name where text helpers are needed. ToolKitFiles/Web/
+Interaction don't depend on it (they have no `nilIfEmpty` consumer); System and
+Weather don't either. The 7-line helper asks for very little module
+infrastructure, and the tradeoff is paid for by the same boundary that keeps
+ToolVocabulary narrow. Replaced when the next shared helper arrives and decides
+whether this stays one file or grows.
 
 ### SPM-root, no app in this repo
 

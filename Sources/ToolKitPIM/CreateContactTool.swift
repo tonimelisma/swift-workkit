@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-097 — create_contact: the write side of contacts. A contact with no
 // name and no organization is rejected — there is nothing to call it by.

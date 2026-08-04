@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-103 — geocode: forward (address → coordinates) or reverse
 // (coordinates → address). Uses the MapKit geocoding requests that replaced
@@ -57,20 +58,5 @@ enum PlaceOutput {
         guard !all.isEmpty else { return "[No results]" }
         let shown = all.prefix(limit)
         return shown.enumerated().map { "\($0.offset + 1). \(line($0.element))" }.joined(separator: "\n")
-    }
-}
-
-extension Optional where Wrapped == String {
-    var nilIfEmpty: String? {
-        guard let value = self else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-}
-
-extension String {
-    var nilIfEmpty: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 }

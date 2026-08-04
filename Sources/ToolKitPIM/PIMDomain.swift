@@ -198,23 +198,3 @@ public struct PIMContactDraft: Sendable, Equatable {
         !givenName.isEmpty || !familyName.isEmpty || organization?.isEmpty == false
     }
 }
-
-extension Optional where Wrapped == String {
-    /// The tools' empty-is-absent convention: `""` and whitespace-only become
-    /// nil, so a model that passes an empty optional doesn't accidentally set
-    /// a field to blank.
-    var nilIfEmpty: String? {
-        guard let value = self else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-}
-
-extension String {
-    /// The non-optional twin: a blank required field is treated as absent
-    /// (used for the required-id guards, where the value is never optional).
-    var nilIfEmpty: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-}
