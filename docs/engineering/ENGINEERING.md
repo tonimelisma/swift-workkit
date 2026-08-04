@@ -1,7 +1,7 @@
 # WorkKit — Engineering
 
 **Status:** Living. Must always describe reality, never aspiration. Last substantive
-change: 2026-08-02.
+change: 2026-08-03 (review top-up B: PIM empty-clears contract, label preservation, AND search, calendar-move-by-id, overlap filter).
 
 If this doc and the code disagree, the doc is a bug. Fix it in the increment that
 caused the drift.
@@ -100,8 +100,13 @@ Tests/
   ToolKitWebTests/                          17 tests: Markdown rendering, SSRF, redirects,
                                              search (16 offline + 1 live, BRAVE_API_KEY-gated)
   ToolKitInteractionTests/                  6 tests: ask_user/update_plan validation
-  ToolKitPIMTests/                          33 tests: calendar/reminder/contact tool
-                                             contracts against in-memory store doubles
+ToolKitPIMTests/                          39 tests: calendar events, reminders,
+                                           contacts — argument validation, draft
+                                           construction, pinned-locale output
+                                           formatting, the empty-clears overlay
+                                           contract, AND search, label preservation,
+                                           and the overlap-range event filter —
+                                           against in-memory store doubles.
   ToolKitFilesTests/                        35 tests: paging, docx, glob, read-before-write,
                                              security-scoped-root no-op path (FR-101),
                                              OCR of generated bitmaps (FR-106)
@@ -361,13 +366,26 @@ schemas" the roadmap named), a TCC prompt cannot be automated (so the tools
 depend on `CalendarEventStore`/`ReminderStore`/`ContactStore` protocols that
 default to EventKit/Contacts-backed stores, and the offline suite runs against
 in-memory doubles), and `GenerationSchema` has no `Date` (so dates travel as ISO
-8601 strings parsed by the tools). Three consequences worth recording:
+8601 strings parsed by the tools). Four consequences worth recording:
 
 - **Read-before-write by id.** The list tools print a stable `[id: …]` handle
   (`eventIdentifier`/`calendarItemIdentifier`/`contact.identifier`); update and
   delete take it, and update reads the current item first and overlays only the
   patches — the file tools' ledger contract, adapted to a framework with no path
   namespace. The model can only ever target what it was shown.
+- **Overlay contract: `nil` preserves; empty / whitespace clears.** Toni
+  delegated the call (2026-08-03: "you figure it out!!! what is the correct
+  behavior!"). The determinate answer: empty-clears matches the calendar tool's
+  existing `location`/`notes` overlay (`arguments.X ?? current.X` — `Optional("")`
+  unwraps to `""`, not to `current.X`) and matches the file-tool edit ledger.
+  `update_contact`'s four-name overlay was the outlier and was fixed in the
+  same increment (formerly `arguments.X.nilIfEmpty ?? current.X`, now
+  `arguments.X.map { $0.nilIfEmpty ?? ``""`` } ?? current.X` for `String` fields
+  and `.map { $0.nilIfEmpty }` for `String?`). `update_calendar_event`'s
+  `calendar` overlay became a pass-through — `arguments.calendar.flatMap {
+  $0.nilIfEmpty }` — so the store only re-resolves when the model asked for a
+  calendar move, not on every save; an event on one of two "Work" calendars
+  stays on its own.
 - **The write surface is unshrunk.** Toni's scope call was categorical: "all the
   fucking write tools. everything is in scope." So calendar events, reminders,
   and contacts all ship create/update/delete (reminders split into idempotent
@@ -379,11 +397,24 @@ in-memory doubles), and `GenerationSchema` has no `Date` (so dates travel as ISO
   key. The README's "each tool documents the Info.plist keys its host app needs"
   is enforced by the error string, not just the prose. Calendar write-only access
   is honored: writes proceed, reads throw a named error.
+- **Email/phone labels are preserved on patch.** A `ContactsPIMStore.apply` that
+  hardcoded `CNLabelHome`/`CNLabelPhoneNumberMobile` for every save (the
+  pre-2026-08-03 shape) silently destroyed any "Work" / "Main" / "Home (landline)"
+  labels whenever any contact was touched. The fix: a draft value equal
+  (case-insensitive for emails; `stringValue` for phones) to an existing entry
+  keeps that entry's label; new values default to the framework defaults.
 - **Sendability is documented, not fudged.** `EKEventStore`/`CNContactStore` are
   documented thread-safe, so the concrete stores are `@unchecked Sendable` with a
   comment; and the `fetchReminders` continuation resume maps to `PIMReminder`
   inside the closure because `[EKReminder]` isn't Sendable. The fakes get the same
   treatment, with a comment, since they're single-threaded fixtures.
+- **Fake fidelity matches the real store.** The `MemoryCalendarStore.events`
+  filter now mirrors EventKit's `predicateForEvents` overlap semantics (an event
+  whose own range overlaps the query is returned, not only events whose
+  `startDate` falls inside it); the `MemoryContactStore.search` ANDs the criteria
+  the way the real `ContactsPIMStore` does via `NSCompoundPredicate`. A fake is
+  allowed to be easier than the real store only when the gap is documented; here
+  the contract tests would have proven things that aren't true.
 
 ### Two umbrellas, one body of tools — and the scoped-body seam
 

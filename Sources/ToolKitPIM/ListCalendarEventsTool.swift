@@ -27,9 +27,9 @@ public struct ListCalendarEventsTool: Tool, Sendable {
     public let name = "list_calendar_events"
     public let description = """
     List the user's calendar events in a date range, sorted by start time. The \
-    default range is today. EventKit caps any range at four years. The [id] is \
-    the stable handle for update_calendar_event and delete_calendar_event. \
-    Requires the host app's NSCalendarsFullAccessUsageDescription.
+    default range is today. The [id] is the stable handle for \
+    update_calendar_event and delete_calendar_event. Requires the host app's \
+    NSCalendarsFullAccessUsageDescription.
     """
 
     private let store: any CalendarEventStore
@@ -55,7 +55,7 @@ public struct ListCalendarEventsTool: Tool, Sendable {
             ?? calendar.startOfDay(for: Date())
         let end = try arguments.end
             .map { try PIMDate.parse($0, calendar: calendar, timeZone: timeZone) }
-            ?? calendar.date(byAdding: .day, value: 1, to: start)!
+            ?? (calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400))
         guard end > start else {
             throw PIMToolError.invalidArguments("end must be after start.")
         }

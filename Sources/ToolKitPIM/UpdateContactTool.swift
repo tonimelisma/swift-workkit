@@ -69,11 +69,19 @@ public struct UpdateContactTool: Tool, Sendable {
         guard let current = try await store.contact(id: arguments.id) else {
             throw PIMToolError.notFound(kind: "contact", id: arguments.id)
         }
+        // Empty-clears contract (Toni 2026-08-03 delegated; matches the calendar
+        // tool's location/notes overlay and the file-tool edit ledger): nil
+        // preserves the current value; empty / whitespace clears — to `""` for
+        // a non-optional String field, to `nil` for an optional one.
+        let givenName  = arguments.given_name.map  { $0.nilIfEmpty ?? "" } ?? current.givenName
+        let familyName = arguments.family_name.map { $0.nilIfEmpty ?? "" } ?? current.familyName
+        let organization = arguments.organization.map { $0.nilIfEmpty } ?? current.organization
+        let jobTitle   = arguments.job_title.map   { $0.nilIfEmpty } ?? current.jobTitle
         let draft = PIMContactDraft(
-            givenName: arguments.given_name.nilIfEmpty ?? current.givenName,
-            familyName: arguments.family_name.nilIfEmpty ?? current.familyName,
-            organization: arguments.organization.nilIfEmpty ?? current.organization,
-            jobTitle: arguments.job_title.nilIfEmpty ?? current.jobTitle,
+            givenName: givenName,
+            familyName: familyName,
+            organization: organization,
+            jobTitle: jobTitle,
             emails: arguments.emails ?? current.emails,
             phones: arguments.phones ?? current.phones
         )
