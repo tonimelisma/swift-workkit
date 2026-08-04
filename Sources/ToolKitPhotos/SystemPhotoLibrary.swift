@@ -3,11 +3,12 @@ import Photos
 import UniformTypeIdentifiers
 
 // REQ: FR-109, FR-110 — the Photos-backed PhotoLibrary. PHPhotoLibrary and
-// PHAssetResourceManager are documented thread-safe, so this is @unchecked
-// Sendable. Authorization accepts .limited too — a partial grant is still a
-// working library for search/export.
+// PHAssetResourceManager are documented thread-safe; this struct has no
+// instance state, so the implicit Sendable conformance is correct. Authorization
+// accepts .limited too — a partial grant is still a working library for
+// search/export.
 
-public struct SystemPhotoLibrary: PhotoLibrary, @unchecked Sendable {
+public struct SystemPhotoLibrary: PhotoLibrary, Sendable {
     public init() {}
 
     public func requestAccess() async throws {
@@ -58,7 +59,12 @@ public struct SystemPhotoLibrary: PhotoLibrary, @unchecked Sendable {
 
         var assets: [PHAsset] = []
         let count = min(fetch.count, max(limit, 1))
-        fetch.enumerateObjects(options: [.concurrent]) { asset, _, stop in
+        // Serial enumeration (no `.concurrent`): the closure mutates a Swift
+        // Array<PHAsset> and writes `stop.pointee`, neither of which is
+        // thread-safe; under `.concurrent` PHFetchResult dispatches the block
+        // onto multiple threads, racing both. The `limit` cap removes any
+        // benefit from concurrency here anyway.
+        fetch.enumerateObjects { asset, _, stop in
             if assets.count >= count { stop.pointee = true; return }
             if type == .screenshot, !asset.mediaSubtypes.contains(.photoScreenshot) { return }
             assets.append(asset)
@@ -74,12 +80,22 @@ public struct SystemPhotoLibrary: PhotoLibrary, @unchecked Sendable {
             throw ToolPhotosError.exportFailed("no asset resource")
         }
         let ext = (resource.originalFilename as NSString).pathExtension.lowercased()
-        let data: Data = await withCheckedContinuation { continuation in
+        // Throwing continuation: a real `PHAssetResourceManager` failure (an
+        // iCloud-only asset not downloaded, network error, cancellation) must
+        // surface as `ToolPhotosError.exportFailed` with the framework's own
+        // message — not as a silent partial-file write. Pre-2026-08-03 the
+        // continuation resumed with the buffer regardless of the error, so
+        // the host wrote whatever bytes had arrived before the failure.
+        let data: Data = try await withCheckedThrowingContinuation { continuation in
             var buffer = Data()
             PHAssetResourceManager.default().requestData(for: resource, options: nil) { chunk in
                 buffer.append(chunk)
-            } completionHandler: { _ in
-                continuation.resume(returning: buffer)
+            } completionHandler: { error in
+                if let error {
+                    continuation.resume(throwing: ToolPhotosError.exportFailed(error.localizedDescription))
+                } else {
+                    continuation.resume(returning: buffer)
+                }
             }
         }
         guard !data.isEmpty else {

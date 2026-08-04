@@ -68,7 +68,7 @@ let package = Package(
         .target(name: "ToolKitPlaces", dependencies: ["ToolSupport"]),        // CoreLocation + MapKit
         .target(name: "ToolKitSystem"),        // ProcessInfo + Network
         .target(name: "ToolKitNotifications", dependencies: ["ToolSupport"]), // UserNotifications
-        .target(name: "ToolKitPhotos", dependencies: ["ToolSupport"]),        // Photos
+        .target(name: "ToolKitPhotos", dependencies: ["ToolSupport", "ToolKitFiles"]),        // Photos
         .target(name: "ToolKitWeather"),       // WeatherKit + CoreLocation
         .target(
             name: "ToolKitForMac",
