@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-089 — update_calendar_event: patch an existing event by its stable id
 // from list_calendar_events. Every patch field is optional; the tool reads the

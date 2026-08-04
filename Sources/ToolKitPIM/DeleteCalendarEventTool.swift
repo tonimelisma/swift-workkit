@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-090 — delete_calendar_event: removes an event by its stable id from
 // list_calendar_events. Reads the title first so the confirmation names what

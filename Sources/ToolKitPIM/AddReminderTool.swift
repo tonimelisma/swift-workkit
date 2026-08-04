@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-092 — add_reminder: the write side of reminders. Like the calendar
 // write tools, the description names the consequence and the TCC key.

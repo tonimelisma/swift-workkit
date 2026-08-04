@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-109 — search_photos: read-only discovery of the photo library, with
 // stable ids for export_photo. Type, date range, album, and limit narrow it.
@@ -103,20 +104,5 @@ enum PhotoOutput {
     static func list<T>(_ all: [T], line: (T) -> String) -> String {
         guard !all.isEmpty else { return "[No results]" }
         return all.enumerated().map { "\($0.offset + 1). \(line($0.element))" }.joined(separator: "\n")
-    }
-}
-
-extension Optional where Wrapped == String {
-    var nilIfEmpty: String? {
-        guard let value = self else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-}
-
-extension String {
-    var nilIfEmpty: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 }

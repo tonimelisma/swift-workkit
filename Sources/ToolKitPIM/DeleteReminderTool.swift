@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-095 — delete_reminder: removes a reminder by its stable id from
 // list_reminders. Reads the title first so the confirmation names what was

@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-099 — delete_contact: removes a contact by its stable id from
 // search_contacts. Reads the name first so the confirmation names who.

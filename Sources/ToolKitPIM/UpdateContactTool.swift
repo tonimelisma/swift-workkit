@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-098 — update_contact: patch an existing contact by its stable id from
 // search_contacts. Reads the current contact first and overlays only what

@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import ToolSupport
 
 // REQ: FR-096 — search_contacts: the read side of contacts. Matching by name,
 // email, or phone (ANDed when more than one is given); the store applies the

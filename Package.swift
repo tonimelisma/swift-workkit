@@ -40,6 +40,12 @@ let package = Package(
     ],
     targets: [
         .target(name: "ToolVocabulary"),
+        // Shared text helpers used by the ToolKit* domain modules. Not a
+        // product — internal target, imported by name. Lives outside
+        // ToolVocabulary (which is the only shared language between Recorder
+        // and ToolKit, see ToolAnnotations.swift) so a string trimmer doesn't
+        // drag effect/budget metadata into modules that don't use it.
+        .target(name: "ToolSupport"),
         .target(name: "Recorder", dependencies: ["ToolVocabulary"]),
         .target(name: "Executors", dependencies: ["ToolVocabulary"]),
         .target(name: "RuntimeTesting"),
@@ -54,14 +60,15 @@ let package = Package(
         .target(name: "ToolKitInteraction", dependencies: ["ToolVocabulary"]),
         // ToolKitPIM: EventKit + Contacts for all three PIM domains. No
         // ToolVocabulary dependency — it touches no effect/budget metadata —
-        // and no external deps: the frameworks are Apple's.
-        .target(name: "ToolKitPIM"),
+        // and no external deps: the frameworks are Apple's. ToolSupport carries
+        // the shared nilIfEmpty helper.
+        .target(name: "ToolKitPIM", dependencies: ["ToolSupport"]),
         // The native-capabilities wave (FR-102…111): one small domain product per
         // framework, all cross-platform (probe-verified on both OS 27 SDKs).
-        .target(name: "ToolKitPlaces"),        // CoreLocation + MapKit
+        .target(name: "ToolKitPlaces", dependencies: ["ToolSupport"]),        // CoreLocation + MapKit
         .target(name: "ToolKitSystem"),        // ProcessInfo + Network
-        .target(name: "ToolKitNotifications"), // UserNotifications
-        .target(name: "ToolKitPhotos"),        // Photos
+        .target(name: "ToolKitNotifications", dependencies: ["ToolSupport"]), // UserNotifications
+        .target(name: "ToolKitPhotos", dependencies: ["ToolSupport"]),        // Photos
         .target(name: "ToolKitWeather"),       // WeatherKit + CoreLocation
         .target(
             name: "ToolKitForMac",
