@@ -46,17 +46,6 @@ need the effect/budget vocabulary, just a 7-line text helper, and
 "ToolVocabulary is the only shared language between Recorder and ToolKit"
 (ToolAnnotations.swift:1-5) shouldn't erode for a string trimmer.
 
-**e. Notifications + System + OcrImage: hardening smells.**
-(1) `schedule_notification` has no length cap on `title`/`body`, no horizon cap
-on `seconds`/`date`, fresh `UUID` per call — the model can fill Apple's
-64-per-app notification queue in one turn; (2) `ScheduleNotificationTool` stores
-`calendar` but never uses it; (3) `OcrImageTool.call` runs synchronous
-`VNImageRequestHandler.perform(_:)` on the cooperative pool, blocking the
-executor for the ~60s warmup and ignoring cancellation; (4)
-`SystemInfoTool.diskStatus` reads `NSHomeDirectory()` (iOS app container quota,
-not device), misleads a model into "2 GB free" decisions; (5) redundant
-`@unchecked Sendable` on `UserNotificationCenterScheduler`.
-
 **f. ToolKitForiOS / security-scoped seam.**
 (1) All six file tools silently ignore the `root:` constructor arg when
 `securityScopedRoot` is set — the API lets a host express a state the code
